@@ -1,0 +1,40 @@
+manager_empid,manager_name,employee_empid,employee_name,manager_is_trainer,employee_is_trainer
+4400457,Das Kritisundar,5503461,Bhusa Lakshmi Prasanna,f,f
+4400457,Das Kritisundar,5504548,Sairam Peddi,f,f
+4400457,Das Kritisundar,5504600,Rohan Pandit,f,f
+4400457,Das Kritisundar,5504290,Sruthi Gattu,f,f
+4400457,Das Kritisundar,5503493,Kankatala Viswanth Manikanta,f,f
+4400457,Das Kritisundar,5504302,Sohail Shaik,f,f
+4400457,Das Kritisundar,5503982,Pooja K Gadi,f,f
+4400457,Das Kritisundar,5502435,Sri Sai Chandhana Burla,f,f
+4400457,Das Kritisundar,5503740,Pechetti Chandana,f,f
+4400457,Das Kritisundar,5503360,Faheem Mohammad,f,f
+4400457,Das Kritisundar,5503851,Prachi Subhash Yenugwar,f,f
+4400457,Das Kritisundar,5503557,Ganta Sneha,f,f
+4400457,Das Kritisundar,5504254,Suresh Pandi P,f,f
+4400457,Das Kritisundar,5504303,Manjunath Kodipeta,f,f
+4400457,Das Kritisundar,5502949,Santhosh Pendyala,f,f
+4400457,Das Kritisundar,5502200,Kaushik N,f,f
+4400457,Das Kritisundar,5504703,Matte Kiran Kumar,f,f
+4400457,Das Kritisundar,5502612,Srilakshmi Sowjanya Kommoju,f,f
+4400457,Das Kritisundar,5502944,Kranthi Kumar Moparthy,f,f
+4400457,Das Kritisundar,5504642,Jagadeesh Reddy Guddeti,f,f
+4400457,Das Kritisundar,5504643,Shaik Sameer,f,f
+4400457,Das Kritisundar,5502143,Ratnaprabha Kasde,f,t
+,,5500909,Raja Shekhar Boora,f,t
+4400457,Das Kritisundar,5500284,Ramya Keerthi Vimmigari,f,t
+4400457,Das Kritisundar,5502571,Likhitha Pilli,f,t
+4400457,Das Kritisundar,5502500,Tanvi Sahu,f,t
+4400457,Das Kritisundar,5502677,Vishal Bathini,f,t
+5500909,Raja Shekhar Boora,5504943,Prabhakar Reddy Nayeni,t,f
+5500909,Raja Shekhar Boora,5502819,Harshitha Modumudi,t,f
+5500909,Raja Shekhar Boora,5503932,Chetan Kumar Vemulapati,t,f
+5500909,Raja Shekhar Boora,5503496,Varalakshmi Aavula,t,f
+5500909,Raja Shekhar Boora,5555555,dummy employee,t,f
+5504763,Sundara Nagaveera Venkata Satish,5504572,Vijay Kumar Battula,t,f
+5504763,Sundara Nagaveera Venkata Satish,5503409,Munilakshmi Bharathi Kokku,t,f
+5500909,Raja Shekhar Boora,5502934,Santhi Chandra,t,t
+5504763,Sundara Nagaveera Venkata Satish,5504589,Abhilash Kohir,t,t
+5504763,Sundara Nagaveera Venkata Satish,5502673,Anand Raghava Byroju,t,t
+5504763,Sundara Nagaveera Venkata Satish,5503411,Sharib Jawed,t,t
+mgr1,Manager One,eng1,Engineer One,t,f

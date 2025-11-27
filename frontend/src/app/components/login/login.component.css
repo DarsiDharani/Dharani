@@ -1,0 +1,72 @@
+/* Custom Animations for a smoother entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Applying the animation classes from the HTML */
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.6s ease-out forwards;
+}
+
+.error-message {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+/* Enhanced Button Styling - matched from register page */
+.register-button {
+  background-image: linear-gradient(to right, #3b82f6 0%, #60a5fa 50%, #3b82f6 100%);
+  background-size: 200% auto;
+  box-shadow: 0 4px 15px 0 rgba(59, 130, 246, 0.4);
+}
+
+.register-button:hover {
+  background-position: right center; /* This creates the shimmer/slide effect */
+  transform: scale(1.05); /* Slightly enlarge button on hover */
+}
+
+/* Spinner animation for loading button */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

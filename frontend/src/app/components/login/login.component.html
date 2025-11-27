@@ -1,0 +1,147 @@
+﻿<div
+  class="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
+  style="background-image: url('/assets/Login.png');"
+>
+  <div class="w-full max-w-md px-4">
+    <div class="bg-white/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl text-black">
+      <h3
+        class="text-4xl font-bold text-center mb-10 animate-fade-in-down"
+        style="font-size: 2.5rem; color: blue;"
+      >
+        Welcome Back
+      </h3>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <div class="mb-4 animate-fade-in-up" style="animation-delay: 100ms;">
+          <label for="username" class="block font-semibold mb-2">Employee ID</label>
+          <input
+            type="text"
+            id="username"
+            class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300"
+            formControlName="username"
+            [ngClass]="{
+              'border-red-500 ring-red-500/30': isSubmitted && f['username'].errors
+            }"
+          />
+          <div
+            class="text-red-600 text-sm mt-1 error-message"
+            *ngIf="isSubmitted && f['username'].errors?.['required']"
+          >
+            Employee ID is required.
+          </div>
+          <div
+            class="text-red-600 text-sm mt-1 error-message"
+            *ngIf="isSubmitted && f['username'].errors?.['pattern']"
+          >
+            Must be a number.
+          </div>
+        </div>
+
+        <div class="mb-6 animate-fade-in-up" style="animation-delay: 200ms;">
+          <label for="password" class="block font-semibold mb-2">Password</label>
+          <input
+            type="password"
+            id="password"
+            class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300"
+            formControlName="password"
+            [ngClass]="{
+              'border-red-500 ring-red-500/30': isSubmitted && f['password'].errors
+            }"
+          />
+          <div
+            class="text-red-600 text-sm mt-1 error-message"
+            *ngIf="isSubmitted && f['password'].errors?.['required']"
+          >
+            Password is required.
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full text-white font-semibold py-3 rounded-lg transition-all duration-300 transform text-lg register-button animate-fade-in-up"
+          style="font-size: 1.2rem; animation-delay: 300ms; background-color: blue;"
+          [disabled]="isLoading"
+        >
+          <span *ngIf="!isLoading">Log In</span>
+          <span
+            *ngIf="isLoading"
+            class="spinner-border spinner-border-sm inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"
+          ></span>
+        </button>
+      </form>
+
+      <div class="mt-6 text-center animate-fade-in-up" style="animation-delay: 400ms;">
+        <a
+          routerLink="/register"
+          class="text-blue-100 hover:underline hover:text-white font-medium transition"
+          style="font-size: 1.1rem; color:blue"
+        >
+          Don't have an account? Create one
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div
+    *ngIf="showPopup"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform animate-bounce-in"
+    >
+      <div
+        class="p-6 border-b border-gray-100"
+        [ngClass]="{
+          'bg-gradient-to-r from-green-50 to-emerald-50': popupType === 'success',
+          'bg-gradient-to-r from-red-50 to-pink-50': popupType === 'error'
+        }"
+      >
+        <div class="flex items-center gap-4">
+          <div
+            class="w-12 h-12 rounded-full flex items-center justify-center"
+            [ngClass]="{
+              'bg-green-500': popupType === 'success',
+              'bg-red-500': popupType === 'error'
+            }"
+          >
+            <i
+              class="text-white text-xl"
+              [ngClass]="{
+                'fa-solid fa-check': popupType === 'success',
+                'fa-solid fa-times': popupType === 'error'
+              }"
+            ></i>
+          </div>
+          <div>
+            <h3
+              class="text-xl font-bold"
+              [ngClass]="{
+                'text-green-800': popupType === 'success',
+                'text-red-800': popupType === 'error'
+              }"
+            >
+              {{ popupTitle }}
+            </h3>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <p class="text-gray-700 leading-relaxed">{{ popupMessage }}</p>
+      </div>
+
+      <div class="p-6 border-t border-gray-100 flex justify-end">
+        <button
+          (click)="closePopup()"
+          class="px-6 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-105"
+          [ngClass]="{
+            'bg-green-500 hover:bg-green-600 text-white': popupType === 'success',
+            'bg-red-500 hover:bg-red-600 text-white': popupType === 'error'
+          }"
+        >
+          {{ popupType === 'success' ? 'Continue' : 'Try Again' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

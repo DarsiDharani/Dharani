@@ -1,0 +1,35 @@
+<div class="w-full h-screen overflow-hidden bg-gray-900 text-white scene-container" (mouseenter)="stopAutoSlide()" (mouseleave)="startAutoSlide()">
+  
+  <div class="scene">
+    <div class="carousel" [ngStyle]="{ 'transform': 'translateZ(-45vh) rotateY(' + rotationAngle + 'deg)' }">
+      
+      <div 
+        *ngFor="let slide of slides; let i = index" 
+        class="carousel__panel"
+        [class.active]="currentIndex === i"
+        [ngStyle]="{ 'transform': 'rotateY(' + (i * 90) + 'deg) translateZ(45vh)' }">
+        
+        <div class="panel__background" [ngStyle]="{ 'background-image': 'url(' + slide.url + ')' }"></div>
+        <div class="panel__overlay"></div>
+        
+        <div class="panel__content">
+          <h1 class="text-4xl md:text-6xl font-bold mb-4">{{ slide.title }}</h1>
+          <p class="text-lg md:text-xl max-w-2xl mb-8">{{ slide.description }}</p>
+          <a routerLink="/register" class="cta-button">Get Started Now <span>→</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button (click)="prevSlide()" class="nav-button left-5">‹</button>
+  <button (click)="nextSlide()" class="nav-button right-5">›</button>
+
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-3 z-20">
+    <button
+      *ngFor="let slide of slides; let i = index"
+      (click)="goToSlide(i)"
+      class="dot-indicator"
+      [class.active]="currentIndex === i"
+    ></button>
+  </div>
+</div>

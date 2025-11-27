@@ -1,0 +1,139 @@
+/* 1. SETUP THE 3D SCENE
+  - `perspective` gives the scene depth. Larger values mean less extreme perspective.
+  - `transform-style: preserve-3d` on the carousel tells its children (the panels)
+    to exist in the same 3D space, rather than being flattened.
+*/
+.scene {
+  width: 100%;
+  height: 100%;
+  perspective: 1500px;
+  position: relative;
+}
+
+.carousel {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform-style: preserve-3d;
+  transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1); /* A smooth, dramatic transition */
+}
+
+/*
+  2. POSITION THE 3D PANELS
+  - Each panel is positioned absolutely at the center of the carousel.
+  - We then use `rotateY` to face it in a different direction (0deg, 90deg, 180deg, 270deg).
+  - `translateZ` pushes the panel out from the center, forming the radius of our shape.
+    Using `vh` (viewport height) units makes the carousel's depth responsive.
+*/
+.carousel__panel {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden; /* Hides the back of the panel when it rotates away */
+  overflow: hidden;
+}
+
+/*
+  3. STYLE THE CONTENT ON EACH PANEL
+  - We animate the content's opacity and position so it elegantly fades in
+    only when a panel becomes the active, front-facing one.
+*/
+.panel__background {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.1);
+  transition: transform 8s ease-out;
+}
+
+.carousel__panel.active .panel__background {
+  transform: scale(1); /* Subtle Ken Burns zoom-out effect on active slide */
+}
+
+.panel__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.2));
+}
+
+.panel__content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  
+  /* Animation setup */
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease-out 0.8s, transform 0.8s ease-out 0.8s;
+}
+
+.carousel__panel.active .panel__content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/*
+  4. POLISHED UI CONTROLS
+*/
+.nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+.nav-button:hover {
+  background: rgba(0, 0, 0, 0.5);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.dot-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.4);
+  transition: all 0.4s ease;
+}
+.dot-indicator.active {
+  background-color: white;
+  transform: scale(1.2);
+}
+
+.cta-button {
+  display: inline-flex;
+  align-items: center;
+  background-color: #2563eb; /* Tailwind blue-600 */
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.75rem;
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+}
+.cta-button:hover {
+  background-color: #3b82f6; /* Tailwind blue-500 */
+  box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+.cta-button span {
+  transition: transform 0.3s ease;
+  margin-left: 0.5rem;
+}
+.cta-button:hover span {
+  transform: translateX(4px);
+}
