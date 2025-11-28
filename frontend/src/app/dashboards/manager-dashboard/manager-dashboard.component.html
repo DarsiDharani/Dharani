@@ -916,6 +916,18 @@
                                         <button (click)="openAttendanceModal(training.id)" class="w-full bg-emerald-500 text-white font-semibold py-1 rounded-lg hover:bg-emerald-700 transition-colors duration-200 text-xs">
                                             <i class="fa-solid fa-clipboard-check mr-1.5"></i>Mark Attendance
                                         </button>
+                                        <!-- File Upload Section -->
+                                        <div class="flex items-center gap-2">
+                                            <label class="flex-1 bg-indigo-500 text-white font-semibold py-1 rounded-lg hover:bg-indigo-700 transition-colors duration-200 text-xs cursor-pointer text-center">
+                                                <i class="fa-solid fa-file-pdf mr-1.5"></i>
+                                                <span *ngIf="!hasQuestionFile(training.id)">Upload Questions</span>
+                                                <span *ngIf="hasQuestionFile(training.id)">Update Questions</span>
+                                                <input type="file" accept=".pdf" (change)="uploadQuestionFile(training.id, $event)" class="hidden">
+                                            </label>
+                                            <button (click)="viewSolutions(training.id)" class="flex-1 bg-teal-500 text-white font-semibold py-1 rounded-lg hover:bg-teal-700 transition-colors duration-200 text-xs">
+                                                <i class="fa-solid fa-eye mr-1.5"></i>View Solutions
+                                            </button>
+                                        </div>
                                         <div class="flex items-center gap-2">
                                             <button *ngIf="!isAssignmentShared(training.id)" (click)="openShareAssignment(training.id)" class="flex-1 bg-violet-500 text-white font-semibold py-1 rounded-lg hover:bg-violet-700 transition-colors duration-200 text-xs">
                                                 <i class="fa-solid fa-file-lines mr-1.5"></i>Share Assignment
@@ -3062,6 +3074,79 @@
         <i class="fa-solid fa-check mr-2"></i>
         <span *ngIf="!isMarkingAttendance">Mark Attendance</span>
         <span *ngIf="isMarkingAttendance">Marking...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Solutions View Modal -->
+<div *ngIf="showSolutionsModal" @fadeIn
+  class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
+  <div @modalScale class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl m-4" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between p-6 bg-teal-50 rounded-t-2xl border-b border-teal-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-teal-100 text-teal-600 rounded-lg flex items-center justify-center">
+          <i class="fa-solid fa-file-pdf text-2xl"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-slate-900">View Solutions</h3>
+          <p class="text-sm text-slate-600">{{ getTrainingName(selectedTrainingForSolutions || 0) }}</p>
+        </div>
+      </div>
+      <button (click)="closeSolutionsModal()" class="w-9 h-9 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors">
+        <i class="fa-solid fa-times text-lg"></i>
+      </button>
+    </div>
+    <div class="max-h-[70vh] overflow-y-auto p-6">
+      <div *ngIf="isLoadingSolutions" class="text-center py-12">
+        <i class="fa-solid fa-spinner fa-spin text-4xl text-slate-400 mb-3"></i>
+        <p class="text-slate-600">Loading solutions...</p>
+      </div>
+      <div *ngIf="!isLoadingSolutions && solutionsList.length === 0" class="text-center py-12 text-slate-500">
+        <i class="fa-solid fa-file-circle-question text-4xl text-slate-400 mb-3"></i>
+        <p class="text-lg font-semibold text-slate-700 mb-2">No Solutions Submitted</p>
+        <p class="text-sm text-slate-500">No engineers have submitted solution files for this training yet.</p>
+      </div>
+      <div *ngIf="!isLoadingSolutions && solutionsList.length > 0" class="space-y-3">
+        <div class="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <p class="text-sm text-slate-700">
+            <i class="fa-solid fa-info-circle mr-2 text-sky-500"></i>
+            <strong>{{ solutionsList.length }}</strong> solution file(s) submitted by engineers.
+          </p>
+        </div>
+        <div *ngFor="let solution of solutionsList" 
+             class="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-slate-200 hover:border-teal-300 hover:shadow-md transition-all">
+          <div class="flex items-center gap-4 flex-grow">
+            <div class="w-12 h-12 bg-teal-100 text-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-file-pdf text-xl"></i>
+            </div>
+            <div class="flex-grow">
+              <p class="font-semibold text-slate-900">{{ solution.employee_name || solution.employee_empid }}</p>
+              <p class="text-xs text-slate-500">ID: {{ solution.employee_empid }}</p>
+              <p class="text-xs text-slate-600 mt-1">
+                <i class="fa-solid fa-file mr-1"></i>{{ solution.file_name }}
+                <span *ngIf="solution.file_size" class="ml-2">
+                  ({{ (solution.file_size / 1024).toFixed(2) }} KB)
+                </span>
+              </p>
+              <p class="text-xs text-slate-500 mt-1">
+                <i class="fa-solid fa-clock mr-1"></i>Uploaded: {{ solution.uploaded_at | date:'medium' }}
+              </p>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <button (click)="downloadSolutionFile(solution.training_id, solution.employee_empid, solution.file_name)" 
+                    class="px-4 py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition-colors shadow-md hover:shadow-teal-300">
+              <i class="fa-solid fa-download mr-2"></i>Download
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end space-x-4 pt-6 border-t border-slate-200 px-6 pb-6">
+      <button (click)="closeSolutionsModal()" 
+              class="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+        Close
       </button>
     </div>
   </div>

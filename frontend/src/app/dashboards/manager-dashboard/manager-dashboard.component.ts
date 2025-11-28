@@ -325,6 +325,14 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
   private _myTrainingsCache: TrainingDetail[] = [];
   private _myTrainingsCacheKey: string = '';
   
+  // File management properties
+  questionFilesUploaded: Map<number, boolean> = new Map(); // Track which trainings have question files
+  trainerSolutions: Map<number, any[]> = new Map(); // Store solution files for trainers to view
+  showSolutionsModal: boolean = false;
+  selectedTrainingForSolutions: number | null = null;
+  solutionsList: any[] = [];
+  isLoadingSolutions: boolean = false;
+  
   // Assignment and Feedback Forms
   newAssignment: Assignment = {
     trainingId: null,
@@ -3395,5 +3403,120 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
   enrollInTraining(training: TrainingDetail): void {
     // This is a placeholder method. In a real app, you would make an API call here.
     this.toastService.success(`Enrolled in "${training.training_name}" successfully!`, 'Enrollment Successful');
+  }
+
+  // --- File Management Methods ---
+  uploadQuestionFile(trainingId: number, event: any): void {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      this.toastService.error('Only PDF files are allowed');
+      return;
+    }
+
+    const token = this.authService.getToken();
+    if (!token) {
+      this.toastService.error('Authentication error. Please log in again.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('training_id', trainingId.toString());
+
+    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+
+    this.http.post(this.apiService.uploadQuestionFileUrl, formData, { headers }).subscribe({
+      next: (response: any) => {
+        this.toastService.success('Question file uploaded successfully');
+        this.questionFilesUploaded.set(trainingId, true);
+        event.target.value = ''; // Reset file input
+      },
+      error: (err) => {
+        console.error('Failed to upload question file:', err);
+        this.toastService.error(err.error?.detail || 'Failed to upload question file');
+      }
+    });
+  }
+
+  hasQuestionFile(trainingId: number): boolean {
+    return this.questionFilesUploaded.get(trainingId) || false;
+  }
+
+  viewSolutions(trainingId: number): void {
+    this.selectedTrainingForSolutions = trainingId;
+    this.showSolutionsModal = true;
+    this.loadSolutions(trainingId);
+  }
+
+  loadSolutions(trainingId: number): void {
+    const token = this.authService.getToken();
+    if (!token) {
+      this.toastService.error('Authentication error. Please log in again.');
+      return;
+    }
+
+    this.isLoadingSolutions = true;
+    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+    
+    this.http.get<any[]>(this.apiService.trainerSolutionsUrl(trainingId), { headers }).subscribe({
+      next: (solutions) => {
+        this.solutionsList = solutions || [];
+        this.trainerSolutions.set(trainingId, solutions || []);
+        this.isLoadingSolutions = false;
+        if (solutions.length === 0) {
+          this.toastService.info('No solutions submitted yet for this training');
+        }
+      },
+      error: (err) => {
+        console.error('Failed to fetch solutions:', err);
+        this.solutionsList = [];
+        this.trainerSolutions.set(trainingId, []);
+        this.isLoadingSolutions = false;
+        this.toastService.error(err.error?.detail || 'Failed to load solutions');
+      }
+    });
+  }
+
+  closeSolutionsModal(): void {
+    this.showSolutionsModal = false;
+    this.selectedTrainingForSolutions = null;
+    this.solutionsList = [];
+  }
+
+  downloadSolutionFile(trainingId: number, employeeId: string, fileName: string): void {
+    const token = this.authService.getToken();
+    if (!token) {
+      this.toastService.error('Authentication error. Please log in again.');
+      return;
+    }
+
+    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+    this.http.get(this.apiService.solutionFileUrl(trainingId, employeeId), { 
+      headers, 
+      responseType: 'blob' 
+    }).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName || `solution_${trainingId}_${employeeId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.toastService.success('Solution file downloaded successfully');
+      },
+      error: (err) => {
+        console.error('Failed to download solution file:', err);
+        this.toastService.error(err.error?.detail || 'Failed to download solution file');
+      }
+    });
+  }
+
+  getTrainingName(trainingId: number): string {
+    const training = this.myTrainings.find(t => t.id === trainingId);
+    return training?.training_name || 'Training';
   }
 }

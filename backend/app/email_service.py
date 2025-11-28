@@ -114,41 +114,52 @@ class OutlookEmailService:
                 # Create Outlook application object
                 logger.info("Initializing Outlook COM object in thread...")
                 
-                # Try multiple connection methods to connect to Outlook
+                # Try different methods to create Outlook object
                 outlook = None
                 
-                # Method 1: Try Dispatch (connects to existing Outlook instance or creates new)
+                # Try multiple connection methods
+                outlook = None
+                
+                # Method 1: Try EnsureDispatch (ensures COM interface is registered)
                 try:
-                    outlook = win32com.client.Dispatch("Outlook.Application")
-                    logger.info("✅ Connected to Outlook via Dispatch")
+                    outlook = win32com.client.gencache.EnsureDispatch("Outlook.Application")
+                    logger.info("✅ Connected to Outlook via EnsureDispatch")
                 except Exception as e1:
                     error_code1 = getattr(e1, 'args', [None])[0] if hasattr(e1, 'args') and len(e1.args) > 0 else None
-                    logger.info(f"Dispatch failed (code: {error_code1}), trying GetActiveObject...")
+                    logger.info(f"EnsureDispatch failed (code: {error_code1}), trying Dispatch...")
                     
-                    # Method 2: Try GetActiveObject (for already running instance)
+                    # Method 2: Try Dispatch (connects to existing Outlook instance)
                     try:
-                        outlook = win32com.client.GetActiveObject("Outlook.Application")
-                        logger.info("✅ Connected to Outlook via GetActiveObject")
+                        outlook = win32com.client.Dispatch("Outlook.Application")
+                        logger.info("✅ Connected to Outlook via Dispatch")
                     except Exception as e2:
                         error_code2 = getattr(e2, 'args', [None])[0] if hasattr(e2, 'args') and len(e2.args) > 0 else None
-                        logger.warning(f"Both methods failed. Dispatch: {error_code1}, GetActiveObject: {error_code2}")
+                        logger.info(f"Dispatch failed (code: {error_code2}), trying GetActiveObject...")
                         
-                        # If "Invalid class string" error, Outlook COM isn't registered/accessible
-                        if -2147221005 in [error_code1, error_code2]:
-                            logger.warning("⚠️  Outlook COM not accessible")
-                            logger.warning("   CRITICAL: Outlook must be opened AFTER starting the Python server!")
-                            logger.warning("   Steps:")
-                            logger.warning("   1. Stop the backend server (Ctrl+C)")
-                            logger.warning("   2. Close Outlook completely (check system tray)")
-                            logger.warning("   3. Start the backend server again")
-                            logger.warning("   4. Open Outlook")
-                            logger.warning("   5. Wait for Outlook to fully load (10-30 seconds)")
-                            logger.warning("   6. Then try creating the training request")
-                            return False
-                        else:
-                            logger.warning(f"⚠️  Cannot connect to Outlook")
-                            logger.warning("   Make sure Outlook is fully loaded and try again")
-                            return False
+                        # Method 3: Try GetActiveObject (for already running instance)
+                        try:
+                            outlook = win32com.client.GetActiveObject("Outlook.Application")
+                            logger.info("✅ Connected to Outlook via GetActiveObject")
+                        except Exception as e3:
+                            error_code3 = getattr(e3, 'args', [None])[0] if hasattr(e3, 'args') and len(e3.args) > 0 else None
+                            logger.warning(f"All methods failed. EnsureDispatch: {error_code1}, Dispatch: {error_code2}, GetActiveObject: {error_code3}")
+                            
+                            # If "Invalid class string" error, Outlook COM isn't registered/accessible
+                            if -2147221005 in [error_code1, error_code2, error_code3]:
+                                logger.warning("⚠️  Outlook COM not accessible")
+                                logger.warning("   CRITICAL: Outlook must be opened AFTER starting the Python server!")
+                                logger.warning("   Steps:")
+                                logger.warning("   1. Stop the backend server (Ctrl+C)")
+                                logger.warning("   2. Close Outlook completely (check system tray)")
+                                logger.warning("   3. Start the backend server again")
+                                logger.warning("   4. Open Outlook")
+                                logger.warning("   5. Wait for Outlook to fully load (10-30 seconds)")
+                                logger.warning("   6. Then try creating the training request")
+                                return False
+                            else:
+                                logger.warning(f"⚠️  Cannot connect to Outlook")
+                                logger.warning("   Make sure Outlook is fully loaded and try again")
+                                return False
                 
                 if not outlook:
                     raise Exception("Failed to create Outlook object")

@@ -70,7 +70,6 @@ class EmployeeCompetency(Base):
     target_expertise = Column(String)
     comments = Column(String)
     target_date = Column(Date)
-    email = Column(String, nullable=True)  # Email address from employee_competency table
     employee = relationship("User")
 
 class AdditionalSkill(Base):

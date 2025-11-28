@@ -72,17 +72,18 @@ async def verify_trainer_for_training(training: models.TrainingDetail, trainer_u
         return False
     
     # Get employee/manager name from ManagerEmployee table
+    # Use limit(1) to handle cases where there are multiple rows (same person can have multiple relationships)
     employee_result = await db.execute(
         select(models.ManagerEmployee.employee_name).where(
             models.ManagerEmployee.employee_empid == trainer_username
-        )
+        ).limit(1)
     )
     employee_name = employee_result.scalar_one_or_none()
     
     manager_result = await db.execute(
         select(models.ManagerEmployee.manager_name).where(
             models.ManagerEmployee.manager_empid == trainer_username
-        )
+        ).limit(1)
     )
     manager_name = manager_result.scalar_one_or_none()
     
