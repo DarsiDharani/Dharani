@@ -913,7 +913,10 @@
                                         </div>
                                     </div>
                                     <div class="mt-auto pt-2 border-t border-slate-200/80 flex flex-col gap-2">
-                                        <button (click)="openAttendanceModal(training.id)" class="w-full bg-emerald-500 text-white font-semibold py-1 rounded-lg hover:bg-emerald-700 transition-colors duration-200 text-xs">
+                                        <!-- Only allow marking attendance when training has a valid ID -->
+                                        <button *ngIf="training.id"
+                                                (click)="openAttendanceModal(training.id)"
+                                                class="w-full bg-emerald-500 text-white font-semibold py-1 rounded-lg hover:bg-emerald-700 transition-colors duration-200 text-xs">
                                             <i class="fa-solid fa-clipboard-check mr-1.5"></i>Mark Attendance
                                         </button>
                                         <!-- File Upload Section -->

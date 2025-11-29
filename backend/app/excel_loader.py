@@ -622,15 +622,6 @@ async def load_all_from_excel(excel_file_source: Any, db: AsyncSession):
                     if comments and isinstance(comments, str):
                         comments = comments.strip()
                     
-                    # Handle email - get from employee_competency table
-                    email = find_column_flexible(row_dict, ['email', 'email_id', 'emailid', 'email_address', 'email id'])
-                    if email and isinstance(email, str):
-                        email = email.strip()
-                    elif email is not None:
-                        email = str(email).strip() if email else None
-                    else:
-                        email = None
-                    
                     # Handle target_date - convert from Excel date to Python date
                     target_date = find_column_flexible(row_dict, ['target_date', 'target date'])
                     try:
@@ -659,8 +650,7 @@ async def load_all_from_excel(excel_file_source: Any, db: AsyncSession):
                             current_expertise=current_expertise,
                             target_expertise=target_expertise,
                             comments=comments,
-                            target_date=final_target_date,
-                            email=email
+                            target_date=final_target_date
                         )
                     )
                     
@@ -1189,15 +1179,6 @@ async def load_employee_competency_from_excel(excel_file_source: Any, db: AsyncS
                 if comments and isinstance(comments, str):
                     comments = comments.strip()
                 
-                # Handle email - get from employee_competency table
-                email = find_column_flexible(row_dict, ['email', 'email_id', 'emailid', 'email_address', 'email id'])
-                if email and isinstance(email, str):
-                    email = email.strip()
-                elif email is not None:
-                    email = str(email).strip() if email else None
-                else:
-                    email = None
-                
                 # Handle target_date - convert from Excel date to Python date
                 target_date = find_column_flexible(row_dict, ['target_date', 'target date'])
                 try:
@@ -1226,8 +1207,7 @@ async def load_employee_competency_from_excel(excel_file_source: Any, db: AsyncS
                         current_expertise=current_expertise,
                         target_expertise=target_expertise,
                         comments=comments,
-                        target_date=final_target_date,
-                        email=email
+                        target_date=final_target_date
                     )
                 )
                 

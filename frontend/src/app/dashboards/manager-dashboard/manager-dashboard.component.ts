@@ -2873,7 +2873,12 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     });
   }
 
-  fetchTrainingCandidates(trainingId: number): void {
+  fetchTrainingCandidates(trainingId: number | null | undefined): void {
+    // Prevent calling backend with invalid trainingId (would cause 422)
+    if (trainingId === null || trainingId === undefined) {
+      console.error('fetchTrainingCandidates called with invalid trainingId:', trainingId);
+      return;
+    }
     const token = this.authService.getToken();
     if (!token) {
       this.toastService.warning('Authentication token missing. Please login again.');
@@ -2913,7 +2918,13 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     return this.trainingCandidates.get(trainingId) || [];
   }
 
-  openAttendanceModal(trainingId: number): void {
+  openAttendanceModal(trainingId: number | null | undefined): void {
+    // Guard against invalid or missing training IDs to avoid 422 errors from backend
+    if (trainingId === null || trainingId === undefined) {
+      console.error('openAttendanceModal called with invalid trainingId:', trainingId);
+      this.toastService.warning('Cannot mark attendance: invalid training selected (missing ID).');
+      return;
+    }
     this.selectedTrainingForAttendance = trainingId;
     const candidates = this.getTrainingCandidates(trainingId);
     
