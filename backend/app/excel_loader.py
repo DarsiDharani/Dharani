@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import Trainer, TrainingDetail, ManagerEmployee, User, EmployeeCompetency
 from datetime import datetime
 import logging
-from typing import Any
+from typing import Any, Optional
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -84,6 +84,23 @@ def find_column_flexible(row_dict: dict, possible_names: list) -> Any:
                     return row_dict.get(key)
     
     return None
+
+
+def convert_to_string_safe(value: Any) -> Optional[str]:
+    """
+    Safely converts a value to a string, handling None, NaN, int, float, etc.
+    Returns None if the value is None, NaN, or empty after conversion.
+    """
+    if value is None:
+        return None
+    
+    # Handle pandas NaN values
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    
+    # Convert to string and strip whitespace
+    str_value = str(value).strip()
+    return str_value if str_value else None
 
 
 async def load_all_from_excel(excel_file_source: Any, db: AsyncSession):
@@ -578,49 +595,49 @@ async def load_all_from_excel(excel_file_source: Any, db: AsyncSession):
                     else:
                         employee_empid = None
                     
-                    employee_name = find_column_flexible(row_dict, ['employee_name', 'employeename', 'employee name', 'name'])
-                    if employee_name and isinstance(employee_name, str):
-                        employee_name = employee_name.strip()
+                    employee_name = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['employee_name', 'employeename', 'employee name', 'name'])
+                    )
                     
-                    division = find_column_flexible(row_dict, ['division'])
-                    if division and isinstance(division, str):
-                        division = division.strip()
+                    division = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['division'])
+                    )
                     
-                    department = find_column_flexible(row_dict, ['department'])
-                    if department and isinstance(department, str):
-                        department = department.strip()
+                    department = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['department'])
+                    )
                     
-                    project = find_column_flexible(row_dict, ['project'])
-                    if project and isinstance(project, str):
-                        project = project.strip()
+                    project = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['project'])
+                    )
                     
-                    role_specific_comp = find_column_flexible(row_dict, ['role_specific_competency_(mhs)', 'role_specific_competency', 'role_specific_comp', 'role specific competency (mhs)'])
-                    if role_specific_comp and isinstance(role_specific_comp, str):
-                        role_specific_comp = role_specific_comp.strip()
+                    role_specific_comp = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['role_specific_competency_(mhs)', 'role_specific_competency', 'role_specific_comp', 'role specific competency (mhs)'])
+                    )
                     
-                    destination = find_column_flexible(row_dict, ['designation', 'destination', 'desination'])
-                    if destination and isinstance(destination, str):
-                        destination = destination.strip()
+                    destination = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['designation', 'destination', 'desination'])
+                    )
                     
-                    competency = find_column_flexible(row_dict, ['competency', 'competence'])
-                    if competency and isinstance(competency, str):
-                        competency = competency.strip()
+                    competency = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['competency', 'competence'])
+                    )
                     
-                    skill = find_column_flexible(row_dict, ['skill'])
-                    if skill and isinstance(skill, str):
-                        skill = skill.strip()
+                    skill = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['skill'])
+                    )
                     
-                    current_expertise = find_column_flexible(row_dict, ['current_expertise_level', 'current_expertise', 'current expertise level', 'current expertise'])
-                    if current_expertise and isinstance(current_expertise, str):
-                        current_expertise = current_expertise.strip()
+                    current_expertise = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['current_expertise_level', 'current_expertise', 'current expertise level', 'current expertise'])
+                    )
                     
-                    target_expertise = find_column_flexible(row_dict, ['target_expertise_level', 'target_expertise', 'target expertise level', 'target expertise'])
-                    if target_expertise and isinstance(target_expertise, str):
-                        target_expertise = target_expertise.strip()
+                    target_expertise = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['target_expertise_level', 'target_expertise', 'target expertise level', 'target expertise'])
+                    )
                     
-                    comments = find_column_flexible(row_dict, ['comments', 'comment'])
-                    if comments and isinstance(comments, str):
-                        comments = comments.strip()
+                    comments = convert_to_string_safe(
+                        find_column_flexible(row_dict, ['comments', 'comment'])
+                    )
                     
                     # Handle target_date - convert from Excel date to Python date
                     target_date = find_column_flexible(row_dict, ['target_date', 'target date'])
@@ -1135,49 +1152,49 @@ async def load_employee_competency_from_excel(excel_file_source: Any, db: AsyncS
                 else:
                     employee_empid = None
                 
-                employee_name = find_column_flexible(row_dict, ['employee_name', 'employeename', 'employee name', 'name'])
-                if employee_name and isinstance(employee_name, str):
-                    employee_name = employee_name.strip()
+                employee_name = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['employee_name', 'employeename', 'employee name', 'name'])
+                )
                 
-                division = find_column_flexible(row_dict, ['division'])
-                if division and isinstance(division, str):
-                    division = division.strip()
+                division = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['division'])
+                )
                 
-                department = find_column_flexible(row_dict, ['department'])
-                if department and isinstance(department, str):
-                    department = department.strip()
+                department = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['department'])
+                )
                 
-                project = find_column_flexible(row_dict, ['project'])
-                if project and isinstance(project, str):
-                    project = project.strip()
+                project = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['project'])
+                )
                 
-                role_specific_comp = find_column_flexible(row_dict, ['role_specific_competency_(mhs)', 'role_specific_competency', 'role_specific_comp', 'role specific competency (mhs)'])
-                if role_specific_comp and isinstance(role_specific_comp, str):
-                    role_specific_comp = role_specific_comp.strip()
+                role_specific_comp = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['role_specific_competency_(mhs)', 'role_specific_competency', 'role_specific_comp', 'role specific competency (mhs)'])
+                )
                 
-                destination = find_column_flexible(row_dict, ['designation', 'destination', 'desination'])
-                if destination and isinstance(destination, str):
-                    destination = destination.strip()
+                destination = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['designation', 'destination', 'desination'])
+                )
                 
-                competency = find_column_flexible(row_dict, ['competency', 'competence'])
-                if competency and isinstance(competency, str):
-                    competency = competency.strip()
+                competency = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['competency', 'competence'])
+                )
                 
-                skill = find_column_flexible(row_dict, ['skill'])
-                if skill and isinstance(skill, str):
-                    skill = skill.strip()
+                skill = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['skill'])
+                )
                 
-                current_expertise = find_column_flexible(row_dict, ['current_expertise_level', 'current_expertise', 'current expertise level', 'current expertise'])
-                if current_expertise and isinstance(current_expertise, str):
-                    current_expertise = current_expertise.strip()
+                current_expertise = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['current_expertise_level', 'current_expertise', 'current expertise level', 'current expertise'])
+                )
                 
-                target_expertise = find_column_flexible(row_dict, ['target_expertise_level', 'target_expertise', 'target expertise level', 'target expertise'])
-                if target_expertise and isinstance(target_expertise, str):
-                    target_expertise = target_expertise.strip()
+                target_expertise = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['target_expertise_level', 'target_expertise', 'target expertise level', 'target expertise'])
+                )
                 
-                comments = find_column_flexible(row_dict, ['comments', 'comment'])
-                if comments and isinstance(comments, str):
-                    comments = comments.strip()
+                comments = convert_to_string_safe(
+                    find_column_flexible(row_dict, ['comments', 'comment'])
+                )
                 
                 # Handle target_date - convert from Excel date to Python date
                 target_date = find_column_flexible(row_dict, ['target_date', 'target date'])
