@@ -61,6 +61,7 @@ import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
 import { trigger, style, animate, transition, query, stagger } from '@angular/animations';
 import { ToastService, ToastMessage } from '../../services/toast.service';
+import { NotificationService } from '../../services/notification.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { TrainingDetail, TrainingRequest, CalendarEvent } from '../../models/training.model';
@@ -562,7 +563,8 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     private router: Router,
     private authService: AuthService,
     private toastService: ToastService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -575,6 +577,8 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     this.fetchTeamAssignedTrainings();
     this.fetchPendingRequests();
     this.fetchTeamSubmissions();
+    // Initialize notifications
+    this.notificationService.initialize();
   }
 
   fetchAssignedTrainingsCount(): void {
@@ -1612,15 +1616,19 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
             this.fetchScheduledTrainings();
         },
         error: (err) => {
-            if (err.status === 422 && err.error && err.error.detail) {
+            if (err.status === 401) {
+              this.toastService.error('Your session has expired. Please log in again.');
+              this.authService.logout();
+              this.router.navigate(['/login']);
+            } else if (err.status === 422 && err.error && err.error.detail) {
               const errorDetails = err.error.detail.map((e: any) => `- Field '${e.loc[1]}': ${e.msg}`).join('\n');
               const fullErrorMessage = `Please correct the following errors:\n${errorDetails}`;
               this.errorMessage = fullErrorMessage;
-              this.toastService.error(fullErrorMessage, 'Validation Error');
+              this.toastService.error(fullErrorMessage);
             } else {
-              const detail = err.error?.detail || 'An unknown error occurred. Check the server logs.';
+              const detail = err.error?.detail || 'An unknown error occurred. Please try again.';
               this.errorMessage = `Failed to schedule training: ${detail}`;
-              this.toastService.error(this.errorMessage, 'Error');
+              this.toastService.error(this.errorMessage);
             }
         }
     });
@@ -2473,6 +2481,8 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
   }
 
   logout(): void {
+    // Clear notifications before logging out
+    this.notificationService.clear();
     this.authService.logout();
     this.router.navigate(['/login']);
   }
@@ -2865,7 +2875,10 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
 
   fetchTrainingCandidates(trainingId: number): void {
     const token = this.authService.getToken();
-    if (!token) return;
+    if (!token) {
+      this.toastService.warning('Authentication token missing. Please login again.');
+      return;
+    }
     const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
     
     this.http.get<{employee_empid: string, employee_name: string, attended: boolean}[]>(
@@ -2874,14 +2887,21 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     ).subscribe({
       next: (candidates) => {
         this.trainingCandidates.set(trainingId, candidates);
+        if (candidates.length === 0) {
+          this.toastService.info('No candidates assigned to this training yet.');
+        }
       },
       error: (err) => {
         // If 401, token expired - redirect to login
         if (err.status === 401) {
+          this.toastService.error('Your session has expired. Please log in again.');
           this.authService.logout();
           this.router.navigate(['/login']);
-        } else if (err.status !== 403) {
-          // If 403, user is not the trainer - that's okay, just don't show candidates
+        } else if (err.status === 403) {
+          // If 403, user is not the trainer
+          this.toastService.warning('Only the trainer of this training can view and mark attendance.');
+        } else {
+          this.toastService.error('Failed to fetch training candidates. Please try again.');
           console.error('Failed to fetch training candidates:', err);
         }
         this.trainingCandidates.set(trainingId, []);
@@ -2896,6 +2916,25 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
   openAttendanceModal(trainingId: number): void {
     this.selectedTrainingForAttendance = trainingId;
     const candidates = this.getTrainingCandidates(trainingId);
+    
+    // Check if candidates list is empty (user might not be trainer or candidates not loaded)
+    if (candidates.length === 0) {
+      // Try to fetch candidates first
+      this.fetchTrainingCandidates(trainingId);
+      
+      // Wait a bit and check again, or show warning
+      setTimeout(() => {
+        const updatedCandidates = this.getTrainingCandidates(trainingId);
+        if (updatedCandidates.length === 0) {
+          this.toastService.warning('No candidates found for this training. You may not be the trainer for this training, or no employees have been assigned yet.');
+          return;
+        }
+        this.attendanceCandidates = updatedCandidates.map(c => ({ ...c }));
+        this.showAttendanceModal = true;
+      }, 500);
+      return;
+    }
+    
     // Create a copy for editing
     this.attendanceCandidates = candidates.map(c => ({ ...c }));
     this.showAttendanceModal = true;

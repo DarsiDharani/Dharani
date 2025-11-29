@@ -225,6 +225,33 @@ async def share_assignment(
         await db.commit()
         await db.refresh(existing_assignment)
         
+        # Notify all employees assigned to this training about the updated assignment
+        try:
+            from app.notification_service import notify_new_assignment_available
+            # Get all employees assigned to this training
+            assignments_stmt = select(models.TrainingAssignment.employee_empid).where(
+                models.TrainingAssignment.training_id == assignment_data.training_id
+            ).distinct()
+            assignments_result = await db.execute(assignments_stmt)
+            assigned_employees = assignments_result.scalars().all()
+            
+            # Send notification to each assigned employee
+            for employee_empid in assigned_employees:
+                try:
+                    await notify_new_assignment_available(
+                        db=db,
+                        employee_empid=employee_empid,
+                        training_id=assignment_data.training_id,
+                        training_name=training.training_name,
+                        assignment_title=assignment_data.title
+                    )
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to create notification for employee {employee_empid}: {str(e)}")
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send assignment update notifications: {str(e)}")
+        
         # Parse and return
         try:
             questions_data = json.loads(existing_assignment.assignment_data)
@@ -255,6 +282,33 @@ async def share_assignment(
         db.add(new_assignment)
         await db.commit()
         await db.refresh(new_assignment)
+
+        # Notify all employees assigned to this training about the new assignment
+        try:
+            from app.notification_service import notify_new_assignment_available
+            # Get all employees assigned to this training
+            assignments_stmt = select(models.TrainingAssignment.employee_empid).where(
+                models.TrainingAssignment.training_id == assignment_data.training_id
+            ).distinct()
+            assignments_result = await db.execute(assignments_stmt)
+            assigned_employees = assignments_result.scalars().all()
+            
+            # Send notification to each assigned employee
+            for employee_empid in assigned_employees:
+                try:
+                    await notify_new_assignment_available(
+                        db=db,
+                        employee_empid=employee_empid,
+                        training_id=assignment_data.training_id,
+                        training_name=training.training_name,
+                        assignment_title=assignment_data.title
+                    )
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to create notification for employee {employee_empid}: {str(e)}")
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send assignment notifications: {str(e)}")
 
         # Parse and return
         try:
@@ -406,6 +460,32 @@ async def share_feedback(
         await db.commit()
         await db.refresh(existing_feedback)
         
+        # Notify all employees assigned to this training about the updated feedback form
+        try:
+            from app.notification_service import notify_new_feedback_available
+            # Get all employees assigned to this training
+            assignments_stmt = select(models.TrainingAssignment.employee_empid).where(
+                models.TrainingAssignment.training_id == feedback_data.training_id
+            ).distinct()
+            assignments_result = await db.execute(assignments_stmt)
+            assigned_employees = assignments_result.scalars().all()
+            
+            # Send notification to each assigned employee
+            for employee_empid in assigned_employees:
+                try:
+                    await notify_new_feedback_available(
+                        db=db,
+                        employee_empid=employee_empid,
+                        training_id=feedback_data.training_id,
+                        training_name=training.training_name
+                    )
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to create notification for employee {employee_empid}: {str(e)}")
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send feedback update notifications: {str(e)}")
+        
         # Parse and return
         feedback_data_parsed = json.loads(existing_feedback.feedback_data)
         return SharedFeedbackResponse(
@@ -427,6 +507,32 @@ async def share_feedback(
         db.add(new_feedback)
         await db.commit()
         await db.refresh(new_feedback)
+
+        # Notify all employees assigned to this training about the new feedback form
+        try:
+            from app.notification_service import notify_new_feedback_available
+            # Get all employees assigned to this training
+            assignments_stmt = select(models.TrainingAssignment.employee_empid).where(
+                models.TrainingAssignment.training_id == feedback_data.training_id
+            ).distinct()
+            assignments_result = await db.execute(assignments_stmt)
+            assigned_employees = assignments_result.scalars().all()
+            
+            # Send notification to each assigned employee
+            for employee_empid in assigned_employees:
+                try:
+                    await notify_new_feedback_available(
+                        db=db,
+                        employee_empid=employee_empid,
+                        training_id=feedback_data.training_id,
+                        training_name=training.training_name
+                    )
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to create notification for employee {employee_empid}: {str(e)}")
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send feedback notifications: {str(e)}")
 
         # Parse and return
         feedback_data_parsed = json.loads(new_feedback.feedback_data)
@@ -1548,128 +1654,165 @@ async def create_or_update_performance_feedback(
     Each submission creates a new feedback entry to maintain complete history.
     All previous feedback entries are preserved and visible to the employee.
     """
-    manager_username = current_user.get("username")
-    if not manager_username:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
-
-    # Validate ratings are between 1-5
-    if feedback_data.overall_performance < 1 or feedback_data.overall_performance > 5:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Overall performance rating must be between 1 and 5"
-        )
-    
-    for field_name, field_value in [
-        ("application_of_training", feedback_data.application_of_training),
-        ("quality_of_deliverables", feedback_data.quality_of_deliverables),
-        ("problem_solving_capability", feedback_data.problem_solving_capability),
-        ("productivity_independence", feedback_data.productivity_independence),
-        ("process_compliance_adherence", feedback_data.process_compliance_adherence)
-    ]:
-        if field_value is not None and (field_value < 1 or field_value > 5):
+    try:
+        manager_username = current_user.get("username")
+        if not manager_username:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{field_name} rating must be between 1 and 5"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials"
             )
 
-    # Verify the employee is managed by this manager
-    manager_relation_stmt = select(models.ManagerEmployee).where(
-        models.ManagerEmployee.manager_empid == manager_username,
-        models.ManagerEmployee.employee_empid == feedback_data.employee_empid
-    )
-    manager_relation_result = await db.execute(manager_relation_stmt)
-    manager_relation = manager_relation_result.scalar_one_or_none()
-    
-    if not manager_relation:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only provide feedback for employees in your team"
+        # Validate ratings are between 1-5
+        if feedback_data.overall_performance < 1 or feedback_data.overall_performance > 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Overall performance rating must be between 1 and 5"
+            )
+        
+        for field_name, field_value in [
+            ("application_of_training", feedback_data.application_of_training),
+            ("quality_of_deliverables", feedback_data.quality_of_deliverables),
+            ("problem_solving_capability", feedback_data.problem_solving_capability),
+            ("productivity_independence", feedback_data.productivity_independence),
+            ("process_compliance_adherence", feedback_data.process_compliance_adherence)
+        ]:
+            if field_value is not None and (field_value < 1 or field_value > 5):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"{field_name} rating must be between 1 and 5"
+                )
+
+        # Verify the employee is managed by this manager
+        manager_relation_stmt = select(models.ManagerEmployee).where(
+            models.ManagerEmployee.manager_empid == manager_username,
+            models.ManagerEmployee.employee_empid == feedback_data.employee_empid
         )
+        manager_relation_result = await db.execute(manager_relation_stmt)
+        manager_relation = manager_relation_result.scalar_one_or_none()
+        
+        if not manager_relation:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only provide feedback for employees in your team"
+            )
 
-    # Verify the training was assigned to this employee by this manager
-    assignment_stmt = select(models.TrainingAssignment).where(
-        models.TrainingAssignment.training_id == feedback_data.training_id,
-        models.TrainingAssignment.employee_empid == feedback_data.employee_empid,
-        models.TrainingAssignment.manager_empid == manager_username
-    )
-    assignment_result = await db.execute(assignment_stmt)
-    assignment = assignment_result.scalar_one_or_none()
-    
-    if not assignment:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only provide feedback for trainings you assigned to this employee"
+        # Verify the training was assigned to this employee by this manager
+        # Note: There may be multiple assignments (e.g., reassignments), so we get the most recent one
+        assignment_stmt = select(models.TrainingAssignment).where(
+            models.TrainingAssignment.training_id == feedback_data.training_id,
+            models.TrainingAssignment.employee_empid == feedback_data.employee_empid,
+            models.TrainingAssignment.manager_empid == manager_username
+        ).order_by(models.TrainingAssignment.assignment_date.desc()).limit(1)
+        assignment_result = await db.execute(assignment_stmt)
+        assignment = assignment_result.scalars().first()
+        
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only provide feedback for trainings you assigned to this employee"
+            )
+
+        # Get training and employee details
+        training_stmt = select(models.TrainingDetail).where(
+            models.TrainingDetail.id == feedback_data.training_id
         )
+        training_result = await db.execute(training_stmt)
+        training = training_result.scalar_one_or_none()
+        
+        if not training:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Training not found"
+            )
 
-    # Get training and employee details
-    training_stmt = select(models.TrainingDetail).where(
-        models.TrainingDetail.id == feedback_data.training_id
-    )
-    training_result = await db.execute(training_stmt)
-    training = training_result.scalar_one_or_none()
-    
-    if not training:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Training not found"
+        # Get manager name
+        manager_name_stmt = select(models.ManagerEmployee.manager_name).where(
+            models.ManagerEmployee.manager_empid == manager_username
+        ).limit(1)
+        manager_name_result = await db.execute(manager_name_stmt)
+        manager_name_row = manager_name_result.scalar_one_or_none()
+        manager_name = manager_name_row if manager_name_row else manager_username
+
+        employee_name = manager_relation.employee_name
+        
+        # Store training_name before commit to avoid lazy-loading issues
+        training_name = training.training_name
+
+        # Always create a new feedback entry to maintain history
+        # This allows employees to see all previous feedback updates
+        try:
+            new_feedback = models.ManagerPerformanceFeedback(
+                training_id=feedback_data.training_id,
+                employee_empid=feedback_data.employee_empid,
+                manager_empid=manager_username,
+                application_of_training=feedback_data.application_of_training,
+                quality_of_deliverables=feedback_data.quality_of_deliverables,
+                problem_solving_capability=feedback_data.problem_solving_capability,
+                productivity_independence=feedback_data.productivity_independence,
+                process_compliance_adherence=feedback_data.process_compliance_adherence,
+                improvement_areas=feedback_data.improvement_areas,
+                strengths=feedback_data.strengths,
+                overall_performance=feedback_data.overall_performance,
+                additional_comments=feedback_data.additional_comments
+            )
+            db.add(new_feedback)
+            await db.commit()
+            await db.refresh(new_feedback)
+        except Exception as db_error:
+            await db.rollback()
+            import logging
+            logging.error(f"Database error while creating performance feedback: {str(db_error)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save performance feedback: {str(db_error)}"
+            )
+        
+        # Create notification for the employee about performance feedback
+        try:
+            from app.notification_service import notify_performance_feedback_received
+            await notify_performance_feedback_received(
+                db=db,
+                employee_empid=feedback_data.employee_empid,
+                training_id=feedback_data.training_id,
+                training_name=training_name
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to create notification for performance feedback: {str(e)}")
+        
+        return ManagerPerformanceFeedbackResponse(
+            id=new_feedback.id,
+            training_id=new_feedback.training_id,
+            training_name=training_name,
+            employee_empid=new_feedback.employee_empid,
+            employee_name=employee_name,
+            manager_empid=new_feedback.manager_empid,
+            manager_name=manager_name,
+            application_of_training=new_feedback.application_of_training,
+            quality_of_deliverables=new_feedback.quality_of_deliverables,
+            problem_solving_capability=new_feedback.problem_solving_capability,
+            productivity_independence=new_feedback.productivity_independence,
+            process_compliance_adherence=new_feedback.process_compliance_adherence,
+            improvement_areas=new_feedback.improvement_areas,
+            strengths=new_feedback.strengths,
+            overall_performance=new_feedback.overall_performance,
+            additional_comments=new_feedback.additional_comments,
+            created_at=new_feedback.created_at,
+            updated_at=new_feedback.updated_at
         )
-
-    # Get manager name
-    manager_name_stmt = select(models.ManagerEmployee.manager_name).where(
-        models.ManagerEmployee.manager_empid == manager_username
-    ).limit(1)
-    manager_name_result = await db.execute(manager_name_stmt)
-    manager_name_row = manager_name_result.first()
-    manager_name = manager_name_row[0] if manager_name_row and manager_name_row[0] else manager_username
-
-    employee_name = manager_relation.employee_name
-    
-    # Store training_name before commit to avoid lazy-loading issues
-    training_name = training.training_name
-
-    # Always create a new feedback entry to maintain history
-    # This allows employees to see all previous feedback updates
-    new_feedback = models.ManagerPerformanceFeedback(
-        training_id=feedback_data.training_id,
-        employee_empid=feedback_data.employee_empid,
-        manager_empid=manager_username,
-        application_of_training=feedback_data.application_of_training,
-        quality_of_deliverables=feedback_data.quality_of_deliverables,
-        problem_solving_capability=feedback_data.problem_solving_capability,
-        productivity_independence=feedback_data.productivity_independence,
-        process_compliance_adherence=feedback_data.process_compliance_adherence,
-        improvement_areas=feedback_data.improvement_areas,
-        strengths=feedback_data.strengths,
-        overall_performance=feedback_data.overall_performance,
-        additional_comments=feedback_data.additional_comments
-    )
-    db.add(new_feedback)
-    await db.commit()
-    await db.refresh(new_feedback)
-    
-    return ManagerPerformanceFeedbackResponse(
-        id=new_feedback.id,
-        training_id=new_feedback.training_id,
-        training_name=training_name,
-        employee_empid=new_feedback.employee_empid,
-        employee_name=employee_name,
-        manager_empid=new_feedback.manager_empid,
-        manager_name=manager_name,
-        application_of_training=new_feedback.application_of_training,
-        quality_of_deliverables=new_feedback.quality_of_deliverables,
-        problem_solving_capability=new_feedback.problem_solving_capability,
-        productivity_independence=new_feedback.productivity_independence,
-        process_compliance_adherence=new_feedback.process_compliance_adherence,
-        improvement_areas=new_feedback.improvement_areas,
-        strengths=new_feedback.strengths,
-        overall_performance=new_feedback.overall_performance,
-        additional_comments=new_feedback.additional_comments,
-        created_at=new_feedback.created_at,
-        updated_at=new_feedback.updated_at
-    )
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 400, 403, 404) as-is
+        raise
+    except Exception as e:
+        # Log unexpected errors and return a proper error response
+        import logging
+        import traceback
+        logging.error(f"Unexpected error in create_or_update_performance_feedback: {str(e)}")
+        logging.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while creating performance feedback: {str(e)}"
+        )
 
 @router.get("/manager/performance-feedback/{training_id}/{employee_empid}", response_model=Optional[ManagerPerformanceFeedbackResponse])
 async def get_performance_feedback(
@@ -1724,8 +1867,8 @@ async def get_performance_feedback(
         models.ManagerEmployee.manager_empid == manager_username
     ).limit(1)
     manager_name_result = await db.execute(manager_name_stmt)
-    manager_name_row = manager_name_result.first()
-    manager_name = manager_name_row[0] if manager_name_row and manager_name_row[0] else manager_username
+    manager_name_row = manager_name_result.scalar_one_or_none()
+    manager_name = manager_name_row if manager_name_row else manager_username
 
     return ManagerPerformanceFeedbackResponse(
         id=feedback.id,

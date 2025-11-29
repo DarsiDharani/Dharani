@@ -51,6 +51,10 @@ export interface TrainingDetail {
   assignmentType?: 'personal' | 'team';
   /** Employee ID if training is assigned to a specific person */
   assigned_to?: string;
+  /** Whether trainer has marked attendance for this training */
+  attendance_marked?: boolean;
+  /** Whether the employee attended the training (true if attended, false if marked absent) */
+  attendance_attended?: boolean;
 }
 
 /**

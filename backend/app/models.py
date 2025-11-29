@@ -251,3 +251,35 @@ class TrainingSolutionFile(Base):
     training = relationship("TrainingDetail")
     employee = relationship("User", foreign_keys=[employee_empid])
 
+class Notification(Base):
+    """
+    Notification model - Stores in-app notifications for users.
+    
+    Attributes:
+        id: Primary key
+        user_empid: Employee ID of the user receiving the notification
+        title: Notification title/heading
+        message: Notification message content
+        type: Notification type (info, success, warning, error, assignment, approval, etc.)
+        is_read: Whether the notification has been read
+        related_id: Optional ID of related entity (training_id, request_id, etc.)
+        related_type: Type of related entity (training, request, assignment, etc.)
+        action_url: Optional URL to navigate to when notification is clicked
+        created_at: Notification creation timestamp
+        read_at: Timestamp when notification was marked as read
+    """
+    __tablename__ = 'notifications'
+    id = Column(Integer, primary_key=True, index=True)
+    user_empid = Column(String, ForeignKey('users.username'), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String, nullable=False, default='info')  # info, success, warning, error, assignment, approval, etc.
+    is_read = Column(Boolean, default=False, nullable=False, index=True)
+    related_id = Column(Integer, nullable=True)  # ID of related entity (training_id, request_id, etc.)
+    related_type = Column(String, nullable=True)  # Type of related entity (training, request, assignment, etc.)
+    action_url = Column(String, nullable=True)  # URL to navigate to when clicked
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    read_at = Column(DateTime, nullable=True)
+    # Relationships
+    user = relationship("User", foreign_keys=[user_empid])
+

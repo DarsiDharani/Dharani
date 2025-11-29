@@ -491,8 +491,8 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <!-- Team Submissions Section -->
-            <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 p-4">
-              <div class="flex items-center justify-between mb-4">
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 p-4 flex flex-col max-h-[500px]">
+              <div class="flex items-center justify-between mb-4 flex-shrink-0">
                 <div class="flex items-center gap-3">
                   <button (click)="fetchTeamSubmissions()" 
                           class="w-8 h-8 bg-indigo-500 hover:bg-indigo-600 rounded-full flex items-center justify-center transition-colors duration-200 shadow-sm"
@@ -506,18 +506,18 @@
                 </span>
               </div>
 
-              <div *ngIf="isLoadingSubmissions" class="text-center py-6">
+              <div *ngIf="isLoadingSubmissions" class="text-center py-6 flex-shrink-0">
                 <i class="fa-solid fa-spinner fa-spin text-2xl text-indigo-600 mb-2"></i>
                 <p class="text-slate-600 text-sm">Loading...</p>
               </div>
 
               <div *ngIf="!isLoadingSubmissions && teamAssignmentSubmissions.length === 0 && teamFeedbackSubmissions.length === 0" 
-                   class="text-center py-6">
+                   class="text-center py-6 flex-shrink-0">
                 <i class="fa-solid fa-inbox text-3xl text-slate-400 mb-2"></i>
                 <p class="text-slate-600 text-xs">No submissions yet</p>
               </div>
 
-              <div *ngIf="!isLoadingSubmissions" class="space-y-3 max-h-[500px] overflow-y-auto">
+              <div *ngIf="!isLoadingSubmissions" class="space-y-3 overflow-y-auto flex-1 pr-1 submission-scrollbar">
                 <!-- Assignment Submissions -->
                 <div *ngIf="teamAssignmentSubmissions.length > 0" class="mb-4">
                   <h4 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
@@ -611,8 +611,8 @@
                 </div>
               </div>
             </div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 p-4">
-              <div class="flex items-center justify-between mb-4">
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 p-4 flex flex-col max-h-[500px]">
+              <div class="flex items-center justify-between mb-4 flex-shrink-0">
                 <div class="flex items-center gap-3">
                   <button (click)="fetchPendingRequests()" 
                           class="w-8 h-8 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center transition-colors duration-200 shadow-sm"
@@ -626,7 +626,7 @@
                 </div>
               </div>
               
-              <div *ngIf="pendingRequests.length > 0; else noRequests" class="space-y-2 max-w-sm">
+              <div *ngIf="pendingRequests.length > 0; else noRequests" class="space-y-2 max-w-sm overflow-y-auto flex-1 pr-1 submission-scrollbar">
                 <div *ngFor="let request of pendingRequests" 
                      class="bg-white rounded-lg shadow-md border border-slate-200 p-2.5 hover:shadow-lg transition-all duration-300">
                   

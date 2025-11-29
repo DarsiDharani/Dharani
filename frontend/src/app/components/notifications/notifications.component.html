@@ -1,0 +1,189 @@
+<!-- Notification Component -->
+<div class="relative">
+  <!-- Notification Bell Icon with Badge -->
+  <button
+    #bellIcon
+    (click)="togglePanel()"
+    class="relative p-2 text-white hover:text-slate-200 transition-colors duration-200 focus:outline-none rounded-lg hover:bg-white/10"
+    [attr.aria-label]="'Notifications' + (unreadCount > 0 ? ' (' + unreadCount + ' unread)' : '')"
+  >
+    <i class="fa-solid fa-bell text-xl"></i>
+    <!-- Unread Count Badge -->
+    <span
+      *ngIf="unreadCount > 0"
+      class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse"
+      [@pulse]="unreadCount > 0 ? 'active' : 'inactive'"
+    >
+      {{ unreadCount > 99 ? '99+' : unreadCount }}
+    </span>
+  </button>
+
+  <!-- NOTE: Slide-in banner for new notifications removed as per UX feedback.
+       Notifications are now shown only inside the dropdown panel below. -->
+
+  <!-- Notification Panel Dropdown -->
+  <div
+    *ngIf="isPanelOpen"
+    #notificationPanel
+    class="absolute right-0 top-12 w-96 bg-white rounded-lg shadow-2xl border border-slate-200 z-50 max-h-[600px] flex flex-col"
+    [@slideDown]
+  >
+    <!-- Panel Header -->
+    <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-lg">
+      <div class="flex items-center gap-2">
+        <h3 class="font-semibold text-slate-800">Notifications</h3>
+        <span
+          *ngIf="unreadCount > 0"
+          class="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5"
+        >
+          {{ unreadCount }} new
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          *ngIf="unreadCount > 0"
+          (click)="markAllAsRead()"
+          class="text-xs text-sky-600 hover:text-sky-700 font-medium"
+        >
+          Mark all read
+        </button>
+        <button
+          (click)="closePanel()"
+          class="text-slate-400 hover:text-slate-600"
+        >
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="overflow-y-auto flex-1" [@listAnimation]="notifications.length">
+      <div *ngIf="notifications.length === 0" class="p-8 text-center text-slate-400">
+        <i class="fa-solid fa-bell-slash text-4xl mb-3"></i>
+        <p>No notifications</p>
+      </div>
+
+      <div
+        *ngFor="let notification of notifications"
+        class="px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
+        [ngClass]="{ 'bg-blue-50': !notification.is_read }"
+        (click)="onNotificationClick(notification)"
+      >
+        <div class="flex items-start gap-3">
+          <div
+            class="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0"
+            [ngClass]="getNotificationColorClass(notification.type)"
+          >
+            <i [class]="'fa-solid ' + getNotificationIcon(notification.type)"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <h4
+                class="font-semibold text-slate-800 text-sm mb-1"
+                [ngClass]="{ 'font-bold': !notification.is_read }"
+              >
+                {{ notification.title }}
+              </h4>
+              <div class="flex items-center gap-1 flex-shrink-0">
+                <span
+                  *ngIf="!notification.is_read"
+                  class="w-2 h-2 bg-blue-500 rounded-full"
+                ></span>
+                <button
+                  (click)="deleteNotification(notification, $event)"
+                  class="text-slate-300 hover:text-red-500 text-xs"
+                  title="Delete notification"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <p class="text-slate-600 text-sm mb-1 line-clamp-2">{{ notification.message }}</p>
+            <p class="text-slate-400 text-xs">{{ getRelativeTime(notification.created_at) }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Footer -->
+    <div class="px-4 py-2 border-t border-slate-200 bg-slate-50 rounded-b-lg flex items-center justify-between gap-2">
+      <button
+        (click)="showClearConfirm()"
+        [disabled]="isClearing || notifications.length === 0"
+        class="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+        title="Clear all notifications"
+      >
+        <i class="fa-solid fa-trash-alt" [class.fa-spin]="isClearing"></i>
+        <span>Clear All</span>
+      </button>
+      <button
+        (click)="loadNotifications()"
+        [disabled]="isRefreshing"
+        class="text-xs text-sky-600 hover:text-sky-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+        title="Refresh notifications"
+      >
+        <i class="fa-solid fa-sync-alt" [class.fa-spin]="isRefreshing"></i>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Clear All Confirmation Modal -->
+  <div
+    *ngIf="showClearConfirmModal"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60]"
+    (click)="closeClearConfirm()"
+    [@fadeIn]
+  >
+    <div
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all"
+      (click)="$event.stopPropagation()"
+      [@modalScale]
+    >
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-6 bg-slate-50 rounded-t-2xl border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-exclamation-triangle text-red-600 text-xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900">Clear All Notifications</h3>
+        </div>
+        <button
+          (click)="closeClearConfirm()"
+          class="w-9 h-9 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors"
+        >
+          <i class="fa-solid fa-times text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6">
+        <p class="text-slate-700 mb-1">
+          Are you sure you want to delete all notifications?
+        </p>
+        <p class="text-sm text-slate-500">
+          This action cannot be undone. All {{ notifications.length }} notification(s) will be permanently deleted.
+        </p>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 pb-6 flex items-center justify-end gap-3">
+        <button
+          (click)="closeClearConfirm()"
+          class="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          (click)="clearAllNotifications()"
+          [disabled]="isClearing"
+          class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+        >
+          <i class="fa-solid fa-trash-alt" [class.fa-spin]="isClearing"></i>
+          <span>{{ isClearing ? 'Deleting...' : 'Delete All' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+

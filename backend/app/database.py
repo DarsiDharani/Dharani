@@ -30,11 +30,20 @@ async_engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 
 # Create async session factory
 # This factory is used to create database sessions throughout the application
+# 
+# NOTE:
+#   expire_on_commit=False is IMPORTANT when using AsyncSession.
+#   With the default (True), accessing ORM attributes after committing
+#   may trigger an implicit lazy-load which performs I/O outside the
+#   greenlet context, causing the "MissingGreenlet: greenlet_spawn has
+#   not been called; can't call await_only()" error that surfaced as a
+#   500 Internal Server Error in some routes.
 AsyncSessionLocal = sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
-    autocommit=False,  # Manual commit control
-    autoflush=False    # Manual flush control
+    autocommit=False,      # Manual commit control
+    autoflush=False,       # Manual flush control
+    expire_on_commit=False # Keep attributes loaded after commit to avoid async lazy-load issues
 )
 
 # Create all tables

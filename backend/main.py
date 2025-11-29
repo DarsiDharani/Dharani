@@ -37,10 +37,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # -------------------------------------------------------------
 
 import logging
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+import traceback
 
-from app.routes import register, login, dashboard_routes, additional_skills, training_routes, assignment_routes, training_requests, shared_content_routes, training_files_routes
+from app.routes import register, login, dashboard_routes, additional_skills, training_routes, assignment_routes, training_requests, shared_content_routes, training_files_routes, notifications
 from app.database import AsyncSessionLocal, create_db_and_tables
 from app.excel_loader import load_all_from_excel, load_manager_employee_from_csv
 
@@ -72,6 +75,68 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# --- Global Exception Handlers ---
+# These ensure CORS headers are always present, even for unhandled exceptions
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Handle HTTPException with CORS headers.
+    This ensures CORS headers are present even for HTTP exceptions.
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers={
+            "Access-Control-Allow-Origin": "http://localhost:4200",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle validation errors with CORS headers.
+    """
+    logging.error(f"Validation error: {exc.errors()}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors(), "body": exc.body},
+        headers={
+            "Access-Control-Allow-Origin": "http://localhost:4200",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler to ensure CORS headers are always present.
+    This catches all unhandled exceptions (excluding HTTPException which is handled above).
+    """
+    logging.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    logging.error(f"Traceback: {traceback.format_exc()}")
+    
+    # Return JSON response with CORS headers
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": f"Internal server error: {str(exc)}",
+            "type": type(exc).__name__
+        },
+        headers={
+            "Access-Control-Allow-Origin": "http://localhost:4200",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 # --- API Routers ---
 app.include_router(register.router)
 app.include_router(login.router)
@@ -82,6 +147,7 @@ app.include_router(assignment_routes.router)
 app.include_router(training_requests.router)
 app.include_router(shared_content_routes.router)
 app.include_router(training_files_routes.router)
+app.include_router(notifications.router)
 
 # <<< NEW: Root Endpoint for Welcome Message >>>
 @app.get("/", tags=["Default"])

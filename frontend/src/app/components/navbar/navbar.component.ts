@@ -15,6 +15,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-navbar',
@@ -29,10 +30,12 @@ export class NavbarComponent {
    * Component constructor - injects required services
    * @param router - Router for navigation (public for template access)
    * @param authService - Service for authentication operations
+   * @param notificationService - Service for managing notifications
    */
   constructor(
     public router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private notificationService: NotificationService
   ) {}
 
   /**
@@ -55,6 +58,8 @@ export class NavbarComponent {
    * Logs the user out and navigates to the login page.
    */
   logout(): void {
+    // Clear notifications before logging out
+    this.notificationService.clear();
     this.authService.logout();
     this.router.navigate(['/login']);
     this.isMenuOpen = false; // Optional: close mobile menu on logout

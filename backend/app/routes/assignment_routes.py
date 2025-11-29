@@ -99,6 +99,20 @@ async def assign_training_to_employee(
         await db.commit()
         await db.refresh(db_assignment)
         
+        # Create notification for the employee
+        from app.notification_service import notify_training_assigned
+        try:
+            await notify_training_assigned(
+                db=db,
+                employee_empid=assignment.employee_username,
+                training_id=assignment.training_id,
+                training_name=training.training_name
+            )
+        except Exception as e:
+            # Log error but don't fail the assignment
+            import logging
+            logging.error(f"Failed to create notification for training assignment: {str(e)}")
+        
         return {"message": "Training assigned successfully"}
     except Exception as e:
         await db.rollback()
@@ -130,6 +144,20 @@ async def get_my_assigned_trainings(
     result = await db.execute(stmt)
     trainings = result.scalars().all()
 
+    # Get attendance records for all trainings for this employee
+    training_ids = [t.id for t in trainings]
+    attendance_map = {}
+    if training_ids:
+        attendance_stmt = select(models.TrainingAttendance).where(
+            models.TrainingAttendance.training_id.in_(training_ids),
+            models.TrainingAttendance.employee_empid == employee_username
+        )
+        attendance_result = await db.execute(attendance_stmt)
+        attendance_records = attendance_result.scalars().all()
+        # Create a map: training_id -> attended (True/False)
+        for record in attendance_records:
+            attendance_map[record.training_id] = record.attended
+
     # Serialize minimal fields
     def to_iso(val):
         if isinstance(val, (date, datetime)):
@@ -143,6 +171,11 @@ async def get_my_assigned_trainings(
         return None
 
     def serialize(td: models.TrainingDetail):
+        # Check if attendance has been marked (record exists) and if attended is True
+        attendance_status = attendance_map.get(td.id)
+        attendance_marked = attendance_status is not None  # Record exists
+        attendance_attended = attendance_status is True if attendance_status is not None else False
+        
         return {
             "id": td.id,
             "division": td.division,
@@ -161,6 +194,8 @@ async def get_my_assigned_trainings(
             "training_type": td.training_type,
             "seats": td.seats,
             "assessment_details": td.assessment_details,
+            "attendance_marked": attendance_marked,  # Whether trainer has marked attendance
+            "attendance_attended": attendance_attended  # Whether employee attended (True) or not (False)
         }
 
     return [serialize(t) for t in trainings]

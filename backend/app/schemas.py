@@ -115,3 +115,36 @@ class TrainingRequestResponse(BaseModel):
 class TrainingRequestUpdate(BaseModel):
     status: str  # approved, rejected
     manager_notes: Optional[str] = None
+
+# --- Schemas for Notifications ---
+
+class NotificationCreate(BaseModel):
+    """Schema for creating a notification"""
+    user_empid: str
+    title: str
+    message: str
+    type: str = "info"  # info, success, warning, error, assignment, approval, etc.
+    related_id: Optional[int] = None
+    related_type: Optional[str] = None
+    action_url: Optional[str] = None
+
+class NotificationResponse(BaseModel):
+    """Schema for notification response"""
+    id: int
+    user_empid: str
+    title: str
+    message: str
+    type: str
+    is_read: bool
+    related_id: Optional[int] = None
+    related_type: Optional[str] = None
+    action_url: Optional[str] = None
+    created_at: datetime
+    read_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class NotificationUpdate(BaseModel):
+    """Schema for updating notification (mark as read)"""
+    is_read: bool = True

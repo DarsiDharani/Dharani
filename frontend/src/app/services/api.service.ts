@@ -192,4 +192,29 @@ export class ApiService {
   trainerSolutionsUrl(trainingId: number): string {
     return this.getUrl(`/training-files/trainer/solutions/${trainingId}`);
   }
+
+  // Notification endpoints
+  get notificationsUrl(): string {
+    return this.getUrl('/notifications/');
+  }
+
+  get unreadCountUrl(): string {
+    return this.getUrl('/notifications/unread-count');
+  }
+
+  markNotificationReadUrl(id: number): string {
+    return this.getUrl(`/notifications/${id}/read`);
+  }
+
+  get markAllNotificationsReadUrl(): string {
+    return this.getUrl('/notifications/read-all');
+  }
+
+  deleteNotificationUrl(id: number): string {
+    return this.getUrl(`/notifications/${id}`);
+  }
+
+  get deleteAllNotificationsUrl(): string {
+    return this.getUrl('/notifications/all');
+  }
 }

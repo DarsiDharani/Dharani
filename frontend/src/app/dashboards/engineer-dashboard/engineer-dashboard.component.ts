@@ -66,6 +66,7 @@ import { map, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { trigger, style, animate, transition, query, stagger } from '@angular/animations';
 import { ToastService, ToastMessage } from '../../services/toast.service';
+import { NotificationService } from '../../services/notification.service';
 import { Skill, ModalSkill } from '../../models/skill.model';
 import { TrainingDetail, TrainingRequest, CalendarEvent } from '../../models/training.model';
 import { Assignment, AssignmentQuestion, QuestionOption, UserAnswer, QuestionResult, AssignmentResult, FeedbackQuestion } from '../../models/assignment.model';
@@ -194,6 +195,7 @@ export class EngineerDashboardComponent implements OnInit {
   isLoadingFeedback: boolean = false;
   showSkillFeedbackModal: boolean = false;
   selectedSkillForFeedback: string = '';
+  selectedFeedbackSkillType: string = ''; // Currently selected skill type tab (L1-L5) in feedback modal
   skillFeedbackList: any[] = [];
   skillFeedbackByType: Map<string, any[]> = new Map(); // Grouped by skill type (L1-L5)
   showFeedbackHistoryModal: boolean = false;
@@ -405,7 +407,8 @@ export class EngineerDashboardComponent implements OnInit {
     private authService: AuthService,
     private apiService: ApiService,
     private cdr: ChangeDetectorRef,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -427,6 +430,8 @@ export class EngineerDashboardComponent implements OnInit {
     this.loadAdditionalSkills();
     // Load manager feedback
     this.fetchManagerFeedback();
+    // Initialize notifications
+    this.notificationService.initialize();
   }
 
   // Fetch manager performance feedback
@@ -690,6 +695,15 @@ export class EngineerDashboardComponent implements OnInit {
     }));
   }
 
+  // Get filtered skill type entries based on selected tab
+  getFilteredSkillTypeEntries(): Array<{key: string, value: any[]}> {
+    const entries = this.getSkillTypeEntries();
+    if (!this.selectedFeedbackSkillType) {
+      return entries;
+    }
+    return entries.filter(entry => entry.key === this.selectedFeedbackSkillType);
+  }
+
   // Get skill type display name
   getSkillTypeDisplayName(skillType: string): string {
     const typeMap: { [key: string]: string } = {
@@ -710,6 +724,9 @@ export class EngineerDashboardComponent implements OnInit {
     
     // Group feedback by skill type
     this.skillFeedbackByType = this.groupFeedbackBySkillType(this.skillFeedbackList);
+    const typeKeys = Array.from(this.skillFeedbackByType.keys());
+    // Default selected tab to first available type (if any)
+    this.selectedFeedbackSkillType = typeKeys.length > 0 ? typeKeys[0] : '';
     
     // Debug: Log all feedback entries to verify all are being returned with complete data
     console.log(`Feedback for skill "${skillName}":`, this.skillFeedbackList);
@@ -1041,6 +1058,7 @@ export class EngineerDashboardComponent implements OnInit {
     // Check assignment submission status for each training
     this.assignedTrainings.forEach(training => {
       // Check assignment submission status
+      // Only log errors if they're not 403 (403 means attendance not marked, which is expected)
       this.http.get(this.apiService.getUrl(`/shared-content/assignments/${training.id}/result`), { headers }).subscribe({
         next: (result: any) => {
           if (result) {
@@ -1049,13 +1067,26 @@ export class EngineerDashboardComponent implements OnInit {
           }
         },
         error: (err) => {
-          // No result found means not submitted yet
-          this.assignmentSubmissionStatus.set(training.id, false);
-          this.assignmentScores.set(training.id, 0);
+          // 403 means attendance not marked yet - this is expected, don't log as error
+          if (err.status === 403) {
+            // Attendance not marked - silently set as not submitted
+            this.assignmentSubmissionStatus.set(training.id, false);
+            this.assignmentScores.set(training.id, 0);
+          } else if (err.status === 404) {
+            // No result found - not submitted yet
+            this.assignmentSubmissionStatus.set(training.id, false);
+            this.assignmentScores.set(training.id, 0);
+          } else {
+            // Other errors - log only if not 403
+            console.warn(`Failed to check assignment status for training ${training.id}:`, err.status);
+            this.assignmentSubmissionStatus.set(training.id, false);
+            this.assignmentScores.set(training.id, 0);
+          }
         }
       });
 
       // Check feedback submission status
+      // Only log errors if they're not 403 (403 means attendance not marked, which is expected)
       this.http.get(this.apiService.getUrl(`/shared-content/feedback/${training.id}/result`), { headers }).subscribe({
         next: (result: any) => {
           if (result) {
@@ -1063,8 +1094,18 @@ export class EngineerDashboardComponent implements OnInit {
           }
         },
         error: (err) => {
-          // No result found means not submitted yet
-          this.feedbackSubmissionStatus.set(training.id, false);
+          // 403 means attendance not marked yet - this is expected, don't log as error
+          if (err.status === 403) {
+            // Attendance not marked - silently set as not submitted
+            this.feedbackSubmissionStatus.set(training.id, false);
+          } else if (err.status === 404) {
+            // No result found - not submitted yet
+            this.feedbackSubmissionStatus.set(training.id, false);
+          } else {
+            // Other errors - log only if not 403
+            console.warn(`Failed to check feedback status for training ${training.id}:`, err.status);
+            this.feedbackSubmissionStatus.set(training.id, false);
+          }
         }
       });
     });
@@ -1086,6 +1127,18 @@ export class EngineerDashboardComponent implements OnInit {
 
   isFeedbackSubmitted(trainingId: number): boolean {
     return this.feedbackSubmissionStatus.get(trainingId) || false;
+  }
+
+  isAttendanceMarked(trainingId: number): boolean {
+    // Check if attendance has been marked for this training
+    const training = this.assignedTrainings.find(t => t.id === trainingId);
+    return training?.attendance_marked === true;
+  }
+
+  isAttendanceAttended(trainingId: number): boolean {
+    // Check if the employee attended the training (attendance marked AND attended = true)
+    const training = this.assignedTrainings.find(t => t.id === trainingId);
+    return training?.attendance_marked === true && training?.attendance_attended === true;
   }
 
   isAssignmentShared(trainingId: number): boolean {
@@ -1506,9 +1559,20 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   scheduleTraining(): void {
+    // Validate required fields
+    if (!this.newTraining.training_name || !this.newTraining.training_name.trim()) {
+      this.toastService.warning('Please enter a training name.');
+      return;
+    }
+    
+    if (!this.newTraining.trainer_name || !this.newTraining.trainer_name.trim()) {
+      this.toastService.warning('Please enter a trainer name.');
+      return;
+    }
+
     const token = this.authService.getToken();
     if (!token) {
-      // Silently redirect to login on token expiration
+      this.toastService.error('Authentication error. Please log in again.');
       this.authService.logout();
       this.router.navigate(['/login']);
       return;
@@ -1541,11 +1605,15 @@ export class EngineerDashboardComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to schedule training:', err);
-        if (err.status === 422 && err.error && err.error.detail) {
+        if (err.status === 401) {
+          this.toastService.error('Your session has expired. Please log in again.');
+          this.authService.logout();
+          this.router.navigate(['/login']);
+        } else if (err.status === 422 && err.error && err.error.detail) {
           const errorDetails = err.error.detail.map((e: any) => `- Field '${e.loc[1]}': ${e.msg}`).join('\n');
           this.toastService.error(`Please correct the following errors:\n${errorDetails}`);
         } else {
-          this.toastService.error(`Failed to schedule training. Error: ${err.statusText || 'Unknown error'}`);
+          this.toastService.error(`Failed to schedule training. ${err.error?.detail || err.statusText || 'Unknown error'}`);
         }
       }
     });
@@ -2061,6 +2129,16 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   giveFeedback(training: TrainingDetail): void {
+    // Check if attendance has been marked and employee attended
+    if (!this.isAttendanceAttended(training.id)) {
+      if (!this.isAttendanceMarked(training.id)) {
+        this.toastService.warning('Attendance has not been marked by the trainer yet. Please wait for the trainer to mark attendance before giving feedback.');
+      } else {
+        this.toastService.warning('You were marked as absent for this training. Only employees who attended can give feedback.');
+      }
+      return;
+    }
+
     // If already submitted, just show a message
     if (this.isFeedbackSubmitted(training.id)) {
       this.toastService.info('You have already submitted feedback for this training.');
@@ -2226,6 +2304,16 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   takeExam(training: TrainingDetail): void {
+    // Check if attendance has been marked and employee attended
+    if (!this.isAttendanceAttended(training.id)) {
+      if (!this.isAttendanceMarked(training.id)) {
+        this.toastService.warning('Attendance has not been marked by the trainer yet. Please wait for the trainer to mark attendance before taking the assignment.');
+      } else {
+        this.toastService.warning('You were marked as absent for this training. Only employees who attended can take assignments.');
+      }
+      return;
+    }
+
     // Check if already submitted - prevent retaking
     if (this.isAssignmentSubmitted(training.id)) {
       this.toastService.warning('You have already submitted this assignment. Click "View Results" to see your score.');
@@ -2258,6 +2346,13 @@ export class EngineerDashboardComponent implements OnInit {
               this.initializeExam(response);
             },
             error: (err) => {
+              // 403 means attendance not marked - expected, don't log
+              // 404 means not submitted yet - also expected
+              if (err.status === 403 || err.status === 404) {
+                // Attendance not marked or not submitted - can take exam
+                this.initializeExam(response);
+                return;
+              }
               if (err.status === 401) {
                 // Silently redirect to login on token expiration
                 this.authService.logout();
@@ -2403,6 +2498,17 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   viewAssignmentResult(training: TrainingDetail): void {
+    // Check if attendance has been marked and employee attended
+    // This is a safety check even though results should only be visible after submission
+    if (!this.isAttendanceAttended(training.id)) {
+      if (!this.isAttendanceMarked(training.id)) {
+        this.toastService.warning('Attendance has not been marked by the trainer yet. Please wait for the trainer to mark attendance.');
+      } else {
+        this.toastService.warning('You were marked as absent for this training. Only employees who attended can view results.');
+      }
+      return;
+    }
+
     const token = this.authService.getToken();
     if (!token) {
       // Silently redirect to login on token expiration
@@ -2640,6 +2746,8 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   logout(): void {
+    // Clear notifications before logging out
+    this.notificationService.clear();
     // Clear only authentication data (not component data)
     // Component will be destroyed, and data will be fresh when user logs back in
     // This ensures data consistency - user will see current data from backend on next login
@@ -2878,6 +2986,16 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   downloadQuestionFile(trainingId: number): void {
+    // Check if attendance has been marked and employee attended
+    if (!this.isAttendanceAttended(trainingId)) {
+      if (!this.isAttendanceMarked(trainingId)) {
+        this.toastService.warning('Attendance has not been marked by the trainer yet. Please wait for the trainer to mark attendance before downloading questions.');
+      } else {
+        this.toastService.warning('You were marked as absent for this training. Only employees who attended can download questions.');
+      }
+      return;
+    }
+
     const token = this.authService.getToken();
     if (!token) {
       this.toastService.error('Authentication error. Please log in again.');
@@ -2908,17 +3026,30 @@ export class EngineerDashboardComponent implements OnInit {
   }
 
   uploadSolutionFile(trainingId: number, event: any): void {
+    // Check if attendance has been marked and employee attended
+    if (!this.isAttendanceAttended(trainingId)) {
+      if (!this.isAttendanceMarked(trainingId)) {
+        this.toastService.warning('Attendance has not been marked by the trainer yet. Please wait for the trainer to mark attendance before uploading solutions.');
+      } else {
+        this.toastService.warning('You were marked as absent for this training. Only employees who attended can upload solutions.');
+      }
+      event.target.value = ''; // Reset file input
+      return;
+    }
+
     const file = event.target.files[0];
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       this.toastService.error('Only PDF files are allowed');
+      event.target.value = ''; // Reset file input
       return;
     }
 
     const token = this.authService.getToken();
     if (!token) {
       this.toastService.error('Authentication error. Please log in again.');
+      event.target.value = ''; // Reset file input
       return;
     }
 

@@ -34,6 +34,7 @@ import { EngineerDashboardComponent } from './dashboards/engineer-dashboard/engi
 import { ManagerDashboardComponent } from './dashboards/manager-dashboard/manager-dashboard.component';
 import { SkillFilterPipe } from './pipes/skill-filter.pipe';
 import { ToastComponent } from './components/toast/toast.component';
+import { NotificationsComponent } from './components/notifications/notifications.component';
 
 @NgModule({
   declarations: [
@@ -47,6 +48,7 @@ import { ToastComponent } from './components/toast/toast.component';
     ManagerDashboardComponent,
     SkillFilterPipe,
     ToastComponent,
+    NotificationsComponent,
   ],
   imports: [
     BrowserModule,
