@@ -144,7 +144,36 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-4">
                 <h2 class="text-sm font-semibold text-white">Training Catalog</h2>
-                <div class="inline-flex rounded-lg shadow-sm bg-blue-700 p-1">
+                <div class="relative">
+                    <div class="bg-indigo-900/50 backdrop-blur-sm rounded-2xl p-1 border border-white/30 ring-1 ring-white/50">
+                        <div class="absolute top-1 bottom-1 w-1/2 bg-gradient-to-r from-green-300 to-green-300 rounded-xl transition-all duration-500 ease-out shadow-lg"
+                             [style.transform]="trainingCatalogType === 'live' ? 'translateX(0)' : 'translateX(100%)'"></div>
+                        
+                        <div class="relative flex">
+                            <button 
+                                (click)="setTrainingCatalogType('live')" 
+                                class="relative z-10 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center gap-2 group"
+                                [ngClass]="{
+                                    'text-indigo-600': trainingCatalogType === 'live',
+                                    'text-white hover:text-blue-200': trainingCatalogType !== 'live'
+                                }">
+                                <i class="fa-solid fa-video text-sm group-hover:scale-110 transition-transform"></i>
+                                <span>Normal Training</span>
+                            </button>
+                            <button 
+                                (click)="setTrainingCatalogType('recorded')" 
+                                class="relative z-10 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center gap-2 group"
+                                [ngClass]="{
+                                    'text-indigo-600': trainingCatalogType === 'recorded',
+                                    'text-white hover:text-blue-200': trainingCatalogType !== 'recorded'
+                                }">
+                                <i class="fa-solid fa-video-slash text-sm group-hover:scale-110 transition-transform"></i>
+                                <span>Recorded</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div *ngIf="trainingCatalogType === 'live'" class="inline-flex rounded-lg shadow-sm bg-blue-700 p-1">
                     <button (click)="setTrainingCatalogView('list')" class="px-3 py-1 text-xs rounded-md transition-colors duration-200" [ngClass]="{'bg-emerald-300 text-emerald-800 font-bold shadow': trainingCatalogView === 'list', 'text-blue-200 hover:bg-blue-500 font-semibold': trainingCatalogView !== 'list'}">
                         <i class="fa-solid fa-list-ul mr-1.5"></i>List
                     </button>
@@ -1282,8 +1311,8 @@
  
       <div *ngIf="!isLoading && !errorMessage && activeTab === 'trainingCatalog' && manager" class="space-y-6">
         
-        
-        <div *ngIf="trainingCatalogView === 'list'">
+        <!-- Live Trainings View -->
+        <div *ngIf="trainingCatalogType === 'live' && trainingCatalogView === 'list'">
           <div *ngIf="filteredCatalog.length === 0" #animatedElement class="animate-on-scroll text-center py-20 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border-2 border-dashed border-slate-300">
             <div class="w-20 h-20 bg-gradient-to-br from-sky-100 to-sky-200 rounded-full flex items-center justify-center mx-auto mb-6"><i class="fa-solid fa-folder-open text-sky-500 text-4xl"></i></div>
             <h4 class="text-2xl font-bold text-slate-800 mb-2">No Trainings Found</h4>
@@ -1332,7 +1361,8 @@
           </div>
         </div>
 
-        <div *ngIf="trainingCatalogView === 'calendar'">
+        <!-- Live Trainings Calendar View -->
+        <div *ngIf="trainingCatalogType === 'live' && trainingCatalogView === 'calendar'">
           <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-6">
             <div class="flex items-center justify-between mb-6">
               <h3 class="text-lg font-bold text-slate-800">Training Calendar</h3>
@@ -1363,6 +1393,53 @@
                   <div *ngFor="let event of getEventForDate(day, allTrainingsCalendarEvents)" class="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded mb-1 truncate" [title]="event.title">
                     {{ event.title }}
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recorded Trainings View -->
+        <div *ngIf="trainingCatalogType === 'recorded'">
+          <div *ngIf="filteredRecordedTrainings.length === 0" #animatedElement class="animate-on-scroll text-center py-20 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border-2 border-dashed border-slate-300">
+            <div class="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mx-auto mb-6"><i class="fa-solid fa-video-slash text-purple-500 text-4xl"></i></div>
+            <h4 class="text-2xl font-bold text-slate-800 mb-2">No Recorded Trainings Found</h4>
+            <p class="text-slate-600 max-w-md mx-auto">No recorded training sessions match your current filters. Try resetting the filters.</p>
+          </div>
+          <div *ngIf="filteredRecordedTrainings.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3" [@listStagger]="filteredRecordedTrainings.length">
+            <div *ngFor="let training of filteredRecordedTrainings" class="group bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 overflow-hidden transform hover:-translate-y-1.5 transition-all duration-300 ease-in-out hover:shadow-2xl flex flex-col">
+              <div class="h-1.5 bg-gradient-to-r from-purple-500 to-pink-400"></div>
+              <div class="p-2 flex-grow flex flex-col">
+                <div class="flex items-start gap-2 mb-1.5">
+                  <div class="flex-shrink-0 w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <i class="fa-solid fa-video text-sm"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold leading-tight text-slate-800">{{ training.training_name }}</h3>
+                    <p class="text-[10px] text-slate-500">by {{ training.trainer_name }}</p>
+                    <p class="text-[10px] text-slate-400">ID: {{ training.id }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-purple-100 text-purple-800 ring-1 ring-inset ring-purple-200" *ngIf="training.skill"><i class="fa-solid fa-tag mr-1"></i>{{ training.skill }}</span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-violet-100 text-violet-800 ring-1 ring-inset ring-violet-200" *ngIf="training.skill_category"><i class="fa-solid fa-layer-group mr-1"></i>{{ training.skill_category }}</span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-rose-100 text-rose-800 ring-1 ring-inset ring-rose-200" *ngIf="training.duration"><i class="fa-solid fa-clock mr-1"></i>{{ training.duration }}</span>
+                </div>
+                <div class="flex-grow text-[11px] text-slate-600 mb-2">
+                  <p *ngIf="training.training_topics"><strong class="font-semibold text-slate-700">Topics:</strong> {{ training.training_topics }}</p>
+                  <p *ngIf="training.description" class="mt-1 text-[10px] text-slate-500">{{ training.description }}</p>
+                </div>
+                <div class="pt-2 mt-auto border-t border-slate-200/80 space-y-1.5 text-xs">
+                  <div class="flex items-center gap-1.5 text-slate-600" *ngIf="training.recorded_date">
+                    <i class="fa-solid fa-calendar-days text-slate-400 w-4 text-center"></i>
+                    <span class="font-medium text-slate-800">Recorded: {{ training.recorded_date | date:'mediumDate' }}</span>
+                  </div>
+                </div>
+                <div class="pt-2 mt-2 border-t border-slate-200/80">
+                  <button (click)="openRecordedTraining(training.lecture_url)" 
+                          class="w-full bg-purple-600 text-white font-semibold py-1.5 rounded-lg hover:bg-purple-700 transition-colors duration-200 text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play mr-1"></i>Watch Lecture
+                  </button>
                 </div>
               </div>
             </div>

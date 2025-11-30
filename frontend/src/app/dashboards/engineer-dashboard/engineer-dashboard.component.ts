@@ -184,6 +184,20 @@ export class EngineerDashboardComponent implements OnInit {
   private _myTrainingsCache: TrainingDetail[] = [];
   private _myTrainingsCacheKey: string = '';
   assignedTrainings: TrainingDetail[] = [];
+  
+  // --- Recorded Trainings ---
+  recordedTrainings: Array<{
+    id: number;
+    training_name: string;
+    skill?: string;
+    skill_category?: string;
+    trainer_name: string;
+    training_topics?: string;
+    duration?: string;
+    recorded_date?: string;
+    lecture_url: string;
+    description?: string;
+  }> = [];
   dashboardUpcomingTrainings: TrainingDetail[] = [];
   trainingRequests: TrainingRequest[] = [];
   assignmentSubmissionStatus: Map<number, boolean> = new Map(); // Track which trainings have submitted assignments
@@ -207,6 +221,7 @@ export class EngineerDashboardComponent implements OnInit {
   trainingLevelFilter: string = 'All';
   trainingDateFilter: string = '';
   trainingCatalogView: 'list' | 'calendar' = 'list';
+  trainingCatalogType: 'live' | 'recorded' = 'live'; // Toggle between live and recorded trainings
 
   // --- Assigned Trainings Filters ---
   assignedSearch: string = '';
@@ -432,6 +447,8 @@ export class EngineerDashboardComponent implements OnInit {
     this.fetchManagerFeedback();
     // Initialize notifications
     this.notificationService.initialize();
+    // Initialize sample recorded trainings data
+    this.initializeRecordedTrainings();
   }
 
   // Fetch manager performance feedback
@@ -2042,6 +2059,125 @@ export class EngineerDashboardComponent implements OnInit {
     }
   }
 
+  setTrainingCatalogType(type: 'live' | 'recorded'): void {
+    this.trainingCatalogType = type;
+  }
+
+  // --- Recorded Trainings ---
+  initializeRecordedTrainings(): void {
+    // Sample recorded trainings data - will be replaced with database data later
+    this.recordedTrainings = [
+      {
+        id: 1001,
+        training_name: 'Introduction to Angular Framework',
+        skill: 'Angular',
+        skill_category: 'L2',
+        trainer_name: 'John Smith',
+        training_topics: 'Components, Services, Dependency Injection, Routing',
+        duration: '3 hours',
+        recorded_date: '2024-01-15',
+        lecture_url: 'https://www.youtube.com/watch?v=k5E2AVpwsko',
+        description: 'Comprehensive introduction to Angular framework covering core concepts and best practices.'
+      },
+      {
+        id: 1002,
+        training_name: 'Advanced TypeScript Patterns',
+        skill: 'TypeScript',
+        skill_category: 'L3',
+        trainer_name: 'Sarah Johnson',
+        training_topics: 'Generics, Decorators, Advanced Types, Design Patterns',
+        duration: '2.5 hours',
+        recorded_date: '2024-02-20',
+        lecture_url: 'https://www.youtube.com/watch?v=O6A-u_FoEX8',
+        description: 'Deep dive into advanced TypeScript features and design patterns for enterprise applications.'
+      },
+      {
+        id: 1003,
+        training_name: 'RESTful API Design Principles',
+        skill: 'API Design',
+        skill_category: 'L3',
+        trainer_name: 'Michael Chen',
+        training_topics: 'REST Architecture, HTTP Methods, Status Codes, API Versioning',
+        duration: '2 hours',
+        recorded_date: '2024-03-10',
+        lecture_url: 'https://www.youtube.com/watch?v=lsMQRaeKNDk',
+        description: 'Learn best practices for designing RESTful APIs that are scalable and maintainable.'
+      },
+      {
+        id: 1004,
+        training_name: 'Database Optimization Techniques',
+        skill: 'Database',
+        skill_category: 'L4',
+        trainer_name: 'Emily Davis',
+        training_topics: 'Query Optimization, Indexing, Normalization, Performance Tuning',
+        duration: '3.5 hours',
+        recorded_date: '2024-04-05',
+        lecture_url: 'https://www.youtube.com/watch?v=wTPGW1PNy_Y',
+        description: 'Master database optimization techniques to improve application performance.'
+      },
+      {
+        id: 1005,
+        training_name: 'Cloud Architecture Fundamentals',
+        skill: 'Cloud Computing',
+        skill_category: 'L2',
+        trainer_name: 'Robert Wilson',
+        training_topics: 'AWS Services, Scalability, Load Balancing, Microservices',
+        duration: '4 hours',
+        recorded_date: '2024-05-12',
+        lecture_url: 'https://www.youtube.com/watch?v=3hLmDS179mg',
+        description: 'Introduction to cloud computing concepts and AWS services for modern applications.'
+      },
+      {
+        id: 1006,
+        training_name: 'DevOps CI/CD Pipeline Setup',
+        skill: 'DevOps',
+        skill_category: 'L3',
+        trainer_name: 'Lisa Anderson',
+        training_topics: 'Jenkins, Docker, Kubernetes, Automated Testing',
+        duration: '3 hours',
+        recorded_date: '2024-06-18',
+        lecture_url: 'https://www.youtube.com/watch?v=9zn6N4j2kqs',
+        description: 'Complete guide to setting up CI/CD pipelines for automated deployment.'
+      }
+    ];
+  }
+
+  get filteredRecordedTrainings(): Array<{
+    id: number;
+    training_name: string;
+    skill?: string;
+    skill_category?: string;
+    trainer_name: string;
+    training_topics?: string;
+    duration?: string;
+    recorded_date?: string;
+    lecture_url: string;
+    description?: string;
+  }> {
+    let list = [...(this.recordedTrainings || [])];
+    if (this.trainingSearch && this.trainingSearch.trim()) {
+      const q = this.trainingSearch.trim().toLowerCase();
+      list = list.filter(t =>
+        (t.training_name || '').toLowerCase().includes(q) ||
+        (t.training_topics || '').toLowerCase().includes(q) ||
+        (t.trainer_name || '').toLowerCase().includes(q) ||
+        (t.skill || '').toLowerCase().includes(q) ||
+        (t.description || '').toLowerCase().includes(q)
+      );
+    }
+    if (this.trainingSkillFilter !== 'All') {
+      list = list.filter(t => t.skill === this.trainingSkillFilter);
+    }
+    if (this.trainingLevelFilter !== 'All') {
+      list = list.filter(t => t.skill_category === this.trainingLevelFilter);
+    }
+    return list;
+  }
+
+  openRecordedTraining(url: string): void {
+    window.open(url, '_blank');
+  }
+
   // --- User Actions ---
   enrollInTraining(training: TrainingDetail): void {
     const token = this.authService.getToken();
@@ -2950,6 +3086,10 @@ export class EngineerDashboardComponent implements OnInit {
   questionFilesUploaded: Map<number, boolean> = new Map(); // Track which trainings have question files
   solutionFilesUploaded: Map<number, boolean> = new Map(); // Track which trainings have solution files uploaded by engineer
   trainerSolutions: Map<number, any[]> = new Map(); // Store solution files for trainers to view
+  showSolutionsModal: boolean = false;
+  selectedTrainingForSolutions: number | null = null;
+  solutionsList: any[] = [];
+  isLoadingSolutions: boolean = false;
 
   uploadQuestionFile(trainingId: number, event: any): void {
     const file = event.target.files[0];
@@ -3072,23 +3212,48 @@ export class EngineerDashboardComponent implements OnInit {
     });
   }
 
-  fetchTrainerSolutions(trainingId: number): void {
-    const token = this.authService.getToken();
-    if (!token) return;
+  viewSolutions(trainingId: number): void {
+    this.selectedTrainingForSolutions = trainingId;
+    this.showSolutionsModal = true;
+    this.loadSolutions(trainingId);
+  }
 
+  loadSolutions(trainingId: number): void {
+    const token = this.authService.getToken();
+    if (!token) {
+      this.toastService.error('Authentication error. Please log in again.');
+      return;
+    }
+
+    this.isLoadingSolutions = true;
     const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+    
     this.http.get<any[]>(this.apiService.trainerSolutionsUrl(trainingId), { headers }).subscribe({
       next: (solutions) => {
+        this.solutionsList = solutions || [];
         this.trainerSolutions.set(trainingId, solutions || []);
+        this.isLoadingSolutions = false;
+        if (solutions.length === 0) {
+          this.toastService.info('No solutions submitted yet for this training');
+        }
       },
       error: (err) => {
         console.error('Failed to fetch solutions:', err);
+        this.solutionsList = [];
         this.trainerSolutions.set(trainingId, []);
+        this.isLoadingSolutions = false;
+        this.toastService.error(err.error?.detail || 'Failed to load solutions');
       }
     });
   }
 
-  downloadSolutionFile(trainingId: number, employeeId: string): void {
+  closeSolutionsModal(): void {
+    this.showSolutionsModal = false;
+    this.selectedTrainingForSolutions = null;
+    this.solutionsList = [];
+  }
+
+  downloadSolutionFile(trainingId: number, employeeId: string, fileName?: string): void {
     const token = this.authService.getToken();
     if (!token) {
       this.toastService.error('Authentication error. Please log in again.');
@@ -3104,7 +3269,7 @@ export class EngineerDashboardComponent implements OnInit {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `solution_${trainingId}_${employeeId}.pdf`;
+        link.download = fileName || `solution_${trainingId}_${employeeId}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -3128,5 +3293,10 @@ export class EngineerDashboardComponent implements OnInit {
 
   getTrainingSolutions(trainingId: number): any[] {
     return this.trainerSolutions.get(trainingId) || [];
+  }
+
+  getTrainingName(trainingId: number): string {
+    const training = this.myTrainings.find(t => t.id === trainingId);
+    return training?.training_name || 'Training';
   }
 }
