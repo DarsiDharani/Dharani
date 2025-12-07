@@ -150,6 +150,9 @@ export class EngineerDashboardComponent implements OnInit {
   modalTitle: string = '';
   modalSkills: ModalSkill[] = [];
 
+  // --- Completed Trainings Modal State ---
+  showCompletedTrainingsModal: boolean = false;
+
   // --- Additional (Self-Reported) Skills ---
   additionalSkills: any[] = [];
   newSkill = {
@@ -167,6 +170,12 @@ export class EngineerDashboardComponent implements OnInit {
   // --- Levels Definitions ---
   levelsSearch = '';
   selectedSkill = '';
+
+  // --- Badges Search ---
+  badgeSearch: string = '';
+
+  // --- Trainer Zone Search ---
+  trainerZoneSearch: string = '';
   public expandedLevels = new Set<string>();
   public expandedSkill: string | null = null; // <<< NEW PROPERTY FOR ACCORDION
   levelHeaders = [
@@ -199,6 +208,7 @@ export class EngineerDashboardComponent implements OnInit {
     description?: string;
   }> = [];
   dashboardUpcomingTrainings: TrainingDetail[] = [];
+  dashboardCompletedTrainings: TrainingDetail[] = [];
   trainingRequests: TrainingRequest[] = [];
   assignmentSubmissionStatus: Map<number, boolean> = new Map(); // Track which trainings have submitted assignments
   assignmentScores: Map<number, number> = new Map(); // Track scores for each training
@@ -434,6 +444,11 @@ export class EngineerDashboardComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
+    // Clear all status maps on init to ensure fresh state after logout/login
+    this.assignmentSubmissionStatus.clear();
+    this.assignmentScores.clear();
+    this.feedbackSubmissionStatus.clear();
+    this.questionFilesUploaded.clear();
     // Always fetch all data fresh on component initialization
     // This ensures data consistency after logout/login cycles
     this.fetchDashboardData();
@@ -930,6 +945,7 @@ export class EngineerDashboardComponent implements OnInit {
   processDashboardTrainings(): void {
     if (!this.assignedTrainings || this.assignedTrainings.length === 0) {
         this.dashboardUpcomingTrainings = [];
+        this.dashboardCompletedTrainings = [];
         return;
     }
     const today = new Date();
@@ -939,6 +955,19 @@ export class EngineerDashboardComponent implements OnInit {
         .filter(t => t.training_date && new Date(t.training_date) >= today)
         .sort((a, b) => {
             return new Date(a.training_date!).getTime() - new Date(b.training_date!).getTime();
+        });
+
+    // Completed trainings: training date has passed AND attendance has been marked AND employee attended
+    this.dashboardCompletedTrainings = this.assignedTrainings
+        .filter(t => {
+            const trainingDate = t.training_date ? new Date(t.training_date) : null;
+            const isPast = trainingDate && trainingDate < today;
+            const attendanceMarked = t.attendance_marked === true;
+            const attendanceAttended = t.attendance_attended === true;
+            return isPast && attendanceMarked && attendanceAttended;
+        })
+        .sort((a, b) => {
+            return new Date(b.training_date!).getTime() - new Date(a.training_date!).getTime();
         });
   }
 
@@ -1122,6 +1151,31 @@ export class EngineerDashboardComponent implements OnInit {
             // Other errors - log only if not 403
             console.warn(`Failed to check feedback status for training ${training.id}:`, err.status);
             this.feedbackSubmissionStatus.set(training.id, false);
+          }
+        }
+      });
+
+      // Check question file existence status
+      // Use HEAD request to check if file exists without downloading
+      this.http.head(this.apiService.questionFileUrl(training.id), { headers, observe: 'response' }).subscribe({
+        next: (response) => {
+          // If HEAD request succeeds (status 200), file exists
+          if (response.status === 200) {
+            this.questionFilesUploaded.set(training.id, true);
+          } else {
+            this.questionFilesUploaded.set(training.id, false);
+          }
+        },
+        error: (err) => {
+          // 403 means attendance not marked or not assigned - this is expected
+          // 404 means file doesn't exist yet
+          if (err.status === 403 || err.status === 404) {
+            // File doesn't exist or not accessible - silently set as not uploaded
+            this.questionFilesUploaded.set(training.id, false);
+          } else {
+            // Other errors - log only if not 403/404
+            console.warn(`Failed to check question file status for training ${training.id}:`, err.status);
+            this.questionFilesUploaded.set(training.id, false);
           }
         }
       });
@@ -2733,22 +2787,12 @@ export class EngineerDashboardComponent implements OnInit {
     return this.assignmentResult.question_results[questionIndex] || null;
   }
 
-  highlightUpcomingTrainings(): void {
-    const element = document.getElementById('upcoming-trainings-section');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  openCompletedTrainingsModal(): void {
+    this.showCompletedTrainingsModal = true;
+  }
 
-      // Directly apply styles for a more reliable effect
-      element.style.transition = 'box-shadow 0.5s ease-in-out';
-      element.style.boxShadow = '0 0 0 4px #38bdf8, 0 0 15px #0ea5e9'; // A blue glow, similar to a ring
-
-      // Remove the styles after a delay
-      setTimeout(() => {
-        element.style.boxShadow = 'none';
-      }, 2500);
-    } else {
-      console.error("DEBUG: Could not find element with id 'upcoming-trainings-section'");
-    }
+  closeCompletedTrainingsModal(): void {
+    this.showCompletedTrainingsModal = false;
   }
 
   // --- General Helpers ---
@@ -2776,6 +2820,38 @@ export class EngineerDashboardComponent implements OnInit {
         request.training.trainer_name.toLowerCase().includes(searchTerm) ||
         (request.training.skill && request.training.skill.toLowerCase().includes(searchTerm)) ||
         (request.training.skill_category && request.training.skill_category.toLowerCase().includes(searchTerm))
+      );
+    }
+    
+    return filtered;
+  }
+
+  getFilteredBadges(): Skill[] {
+    let filtered = this.badges;
+    
+    // Filter by search term
+    if (this.badgeSearch.trim()) {
+      const searchTerm = this.badgeSearch.trim().toLowerCase();
+      filtered = filtered.filter(badge => 
+        badge.skill.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    return filtered;
+  }
+
+  getFilteredMyTrainings(): TrainingDetail[] {
+    let filtered = this.myTrainings;
+    
+    // Filter by search term
+    if (this.trainerZoneSearch.trim()) {
+      const searchTerm = this.trainerZoneSearch.trim().toLowerCase();
+      filtered = filtered.filter(training => 
+        training.training_name.toLowerCase().includes(searchTerm) ||
+        (training.trainer_name && training.trainer_name.toLowerCase().includes(searchTerm)) ||
+        (training.skill && training.skill.toLowerCase().includes(searchTerm)) ||
+        (training.skill_category && training.skill_category.toLowerCase().includes(searchTerm)) ||
+        (training.training_topics && training.training_topics.toLowerCase().includes(searchTerm))
       );
     }
     
@@ -2972,11 +3048,16 @@ export class EngineerDashboardComponent implements OnInit {
   getTrainingCardIcon(skill?: string): string {
     if (!skill) return 'fa-solid fa-laptop-code';
     const s = skill.toLowerCase();
+    if (s.includes('softcar')) return 'fa-solid fa-car';
+    if (s.includes('integrity')) return 'fa-solid fa-shield-halved';
+    if (s.includes('exam')) return 'fa-solid fa-microscope';
+    if (s.includes('cpp') || s.includes('c++')) return 'fa-solid fa-code';
     if (s.includes('python')) return 'fa-brands fa-python';
-    if (s.includes('c++') || s.includes('cpp')) return 'fa-solid fa-file-code';
-    if (s.includes('git')) return 'fa-brands fa-git-alt';
+    if (s.includes('matlab')) return 'fa-solid fa-chart-line';
+    if (s.includes('doors')) return 'fa-solid fa-door-open';
     if (s.includes('azure')) return 'fa-brands fa-microsoft';
-    if (s.includes('exam') || s.includes('axivion')) return 'fa-solid fa-vial-circle-check';
+    if (s.includes('git')) return 'fa-brands fa-git-alt';
+    if (s.includes('axivion')) return 'fa-solid fa-search';
     return 'fa-solid fa-laptop-code';
   }
 
@@ -3095,8 +3176,10 @@ export class EngineerDashboardComponent implements OnInit {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      this.toastService.error('Only PDF files are allowed');
+    const allowedExtensions = ['.pdf', '.doc', '.docx'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!allowedExtensions.includes(fileExtension)) {
+      this.toastService.error('Only PDF, DOC, and DOCX files are allowed');
       return;
     }
 
@@ -3114,13 +3197,13 @@ export class EngineerDashboardComponent implements OnInit {
 
     this.http.post(this.apiService.uploadQuestionFileUrl, formData, { headers }).subscribe({
       next: (response: any) => {
-        this.toastService.success('Question file uploaded successfully');
+        this.toastService.success('Document uploaded successfully');
         this.questionFilesUploaded.set(trainingId, true);
         event.target.value = ''; // Reset file input
       },
       error: (err) => {
-        console.error('Failed to upload question file:', err);
-        this.toastService.error(err.error?.detail || 'Failed to upload question file');
+        console.error('Failed to upload document:', err);
+        this.toastService.error(err.error?.detail || 'Failed to upload document');
       }
     });
   }
@@ -3145,17 +3228,35 @@ export class EngineerDashboardComponent implements OnInit {
     const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
     this.http.get(this.apiService.questionFileUrl(trainingId), { 
       headers, 
-      responseType: 'blob' 
+      responseType: 'blob',
+      observe: 'response'
     }).subscribe({
-      next: (blob: Blob) => {
+      next: (response) => {
+        // Extract filename from Content-Disposition header
+        let filename = `training_questions_${trainingId}.pdf`;
+        const contentDisposition = response.headers.get('Content-Disposition');
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Get media type from response or default based on file extension
+        const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+        const blob = new Blob([response.body!], { type: contentType });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `training_questions_${trainingId}.pdf`;
+        link.download = filename;
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // Small delay before cleanup to ensure download starts
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
         this.toastService.success('Question file downloaded successfully');
       },
       error: (err) => {
@@ -3263,17 +3364,35 @@ export class EngineerDashboardComponent implements OnInit {
     const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
     this.http.get(this.apiService.solutionFileUrl(trainingId, employeeId), { 
       headers, 
-      responseType: 'blob' 
+      responseType: 'blob',
+      observe: 'response'
     }).subscribe({
-      next: (blob: Blob) => {
+      next: (response) => {
+        // Extract filename from Content-Disposition header or use provided filename
+        let filename = fileName || `solution_${trainingId}_${employeeId}.pdf`;
+        const contentDisposition = response.headers.get('Content-Disposition');
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Get media type from response or default based on file extension
+        const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+        const blob = new Blob([response.body!], { type: contentType });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = fileName || `solution_${trainingId}_${employeeId}.pdf`;
+        link.download = filename;
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // Small delay before cleanup to ensure download starts
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
         this.toastService.success('Solution file downloaded successfully');
       },
       error: (err) => {

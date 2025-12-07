@@ -29,6 +29,7 @@ import { RegisterComponent } from './components/register/register.component';
 
 import { EngineerDashboardComponent } from './dashboards/engineer-dashboard/engineer-dashboard.component';
 import { ManagerDashboardComponent } from './dashboards/manager-dashboard/manager-dashboard.component';
+import { AdminDashboardComponent } from './dashboards/admin-dashboard/admin-dashboard.component';
 
 import { AuthGuard } from './guards/auth.guard';
 
@@ -42,6 +43,7 @@ const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
   { path: 'about', component: AboutComponent },
+  { path: 'admin-dashboard', component: AdminDashboardComponent, canActivate: [AuthGuard] },
   { path: 'engineer-dashboard', component: EngineerDashboardComponent, canActivate: [AuthGuard] },
   { path: 'manager-dashboard', component: ManagerDashboardComponent, canActivate: [AuthGuard] },
 ];

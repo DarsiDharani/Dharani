@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.database import get_db_async
-from app.models import User, ManagerEmployee
+from app.models import User, ManagerEmployee, Admin
 from app.auth_utils import verify_password, create_access_token
 from app.schemas import UserLogin
 
@@ -36,27 +36,36 @@ async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db_async)):
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Determine role from manager_employee table
-    # Check if user is a manager (has employees reporting to them)
-    manager_check = await db.execute(
-        select(ManagerEmployee).where(ManagerEmployee.manager_empid == user_data.username)
+    # PRIORITY 1: Check if user is admin (check admins table)
+    admin_check = await db.execute(
+        select(Admin).where(Admin.username == user_data.username)
     )
-    is_manager = manager_check.scalars().first() is not None
+    is_admin = admin_check.scalars().first() is not None
     
-    # Check if user is an employee (reports to a manager)
-    employee_check = await db.execute(
-        select(ManagerEmployee).where(ManagerEmployee.employee_empid == user_data.username)
-    )
-    is_employee = employee_check.scalars().first() is not None
-    
-    # Determine role: manager takes precedence if user is both
-    if is_manager:
-        role = "manager"
-    elif is_employee:
-        role = "employee"
+    if is_admin:
+        role = "admin"
     else:
-        # User exists but not in manager_employee table - default to employee
-        role = "employee"
+        # PRIORITY 2: Determine role from manager_employee table
+        # Check if user is a manager (has employees reporting to them)
+        manager_check = await db.execute(
+            select(ManagerEmployee).where(ManagerEmployee.manager_empid == user_data.username)
+        )
+        is_manager = manager_check.scalars().first() is not None
+        
+        # Check if user is an employee (reports to a manager)
+        employee_check = await db.execute(
+            select(ManagerEmployee).where(ManagerEmployee.employee_empid == user_data.username)
+        )
+        is_employee = employee_check.scalars().first() is not None
+        
+        # Determine role: manager takes precedence if user is both
+        if is_manager:
+            role = "manager"
+        elif is_employee:
+            role = "employee"
+        else:
+            # User exists but not in manager_employee table - default to employee
+            role = "employee"
 
     # Fetch employee name to add to the token
     name_result = await db.execute(

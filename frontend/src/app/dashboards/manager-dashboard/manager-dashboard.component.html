@@ -942,36 +942,40 @@
                                         </div>
                                     </div>
                                     <div class="mt-auto pt-2 border-t border-slate-200/80 flex flex-col gap-2">
-                                        <!-- Only allow marking attendance when training has a valid ID -->
-                                        <button *ngIf="training.id"
-                                                (click)="openAttendanceModal(training.id)"
-                                                class="w-full bg-emerald-500 text-white font-semibold py-1 rounded-lg hover:bg-emerald-700 transition-colors duration-200 text-xs">
-                                            <i class="fa-solid fa-clipboard-check mr-1.5"></i>Mark Attendance
-                                        </button>
-                                        <!-- File Upload Section -->
+                                        <!-- Primary Actions Row -->
                                         <div class="flex items-center gap-2">
-                                            <label class="flex-1 bg-indigo-500 text-white font-semibold py-1 rounded-lg hover:bg-indigo-700 transition-colors duration-200 text-xs cursor-pointer text-center">
-                                                <i class="fa-solid fa-file-pdf mr-1.5"></i>
-                                                <span *ngIf="!hasQuestionFile(training.id)">Upload Questions</span>
-                                                <span *ngIf="hasQuestionFile(training.id)">Update Questions</span>
-                                                <input type="file" accept=".pdf" (change)="uploadQuestionFile(training.id, $event)" class="hidden">
+                                            <!-- Mark Attendance -->
+                                            <button *ngIf="training.id"
+                                                    (click)="openAttendanceModal(training.id)"
+                                                    class="flex-1 bg-emerald-500 text-white font-semibold py-1.5 rounded-lg hover:bg-emerald-700 transition-colors duration-200 text-xs">
+                                                <i class="fa-solid fa-clipboard-check mr-1.5"></i>Attendance
+                                            </button>
+                                            <!-- Document Management (Upload/Update) -->
+                                            <label class="flex-1 bg-indigo-500 text-white font-semibold py-1.5 rounded-lg hover:bg-indigo-700 transition-colors duration-200 text-xs cursor-pointer text-center relative">
+                                                <i class="fa-solid fa-file-upload mr-1.5"></i>{{ hasQuestionFile(training.id) ? 'Update' : 'Upload' }} Document
+                                                <input type="file" accept=".pdf,.doc,.docx" (change)="uploadQuestionFile(training.id, $event)" class="hidden">
+                                                <span *ngIf="hasQuestionFile(training.id)" class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white"></span>
                                             </label>
-                                            <button (click)="viewSolutions(training.id)" class="flex-1 bg-teal-500 text-white font-semibold py-1 rounded-lg hover:bg-teal-700 transition-colors duration-200 text-xs">
-                                                <i class="fa-solid fa-eye mr-1.5"></i>View Solutions
+                                            <!-- View Solutions -->
+                                            <button (click)="viewSolutions(training.id)" class="flex-1 bg-teal-500 text-white font-semibold py-1.5 rounded-lg hover:bg-teal-700 transition-colors duration-200 text-xs">
+                                                <i class="fa-solid fa-eye mr-1.5"></i>Solutions
                                             </button>
                                         </div>
+                                        <!-- Sharing Actions Row -->
                                         <div class="flex items-center gap-2">
-                                            <button *ngIf="!isAssignmentShared(training.id)" (click)="openShareAssignment(training.id)" class="flex-1 bg-violet-500 text-white font-semibold py-1 rounded-lg hover:bg-violet-700 transition-colors duration-200 text-xs">
-                                                <i class="fa-solid fa-file-lines mr-1.5"></i>Share Assignment
+                                            <!-- Share Assignment (with status indicator) -->
+                                            <button (click)="openShareAssignment(training.id)" 
+                                                    [class]="isAssignmentShared(training.id) ? 'flex-1 bg-slate-400 text-white font-semibold py-1.5 rounded-lg cursor-not-allowed transition-colors duration-200 text-xs' : 'flex-1 bg-violet-500 text-white font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors duration-200 text-xs'"
+                                                    [disabled]="isAssignmentShared(training.id)">
+                                                <i [class]="isAssignmentShared(training.id) ? 'fa-solid fa-check-circle mr-1.5' : 'fa-solid fa-file-lines mr-1.5'"></i>
+                                                {{ isAssignmentShared(training.id) ? 'Assignment Shared' : 'Share Assignment' }}
                                             </button>
-                                            <button *ngIf="isAssignmentShared(training.id)" disabled class="flex-1 bg-slate-400 text-white font-semibold py-1 rounded-lg cursor-not-allowed transition-colors duration-200 text-xs">
-                                                <i class="fa-solid fa-check-circle mr-1.5"></i>Shared
-                                            </button>
-                                            <button *ngIf="!isFeedbackShared(training.id)" (click)="openShareFeedback(training.id)" class="flex-1 bg-amber-500 text-white font-semibold py-1 rounded-lg hover:bg-amber-700 transition-colors duration-200 text-xs">
-                                                <i class="fa-solid fa-comment-dots mr-1.5"></i>Share Feedback
-                                            </button>
-                                            <button *ngIf="isFeedbackShared(training.id)" disabled class="flex-1 bg-slate-400 text-white font-semibold py-1 rounded-lg cursor-not-allowed transition-colors duration-200 text-xs">
-                                                <i class="fa-solid fa-check-circle mr-1.5"></i>Shared
+                                            <!-- Share Feedback (with status indicator) -->
+                                            <button (click)="openShareFeedback(training.id)" 
+                                                    [class]="isFeedbackShared(training.id) ? 'flex-1 bg-slate-400 text-white font-semibold py-1.5 rounded-lg cursor-not-allowed transition-colors duration-200 text-xs' : 'flex-1 bg-amber-500 text-white font-semibold py-1.5 rounded-lg hover:bg-amber-700 transition-colors duration-200 text-xs'"
+                                                    [disabled]="isFeedbackShared(training.id)">
+                                                <i [class]="isFeedbackShared(training.id) ? 'fa-solid fa-check-circle mr-1.5' : 'fa-solid fa-comment-dots mr-1.5'"></i>
+                                                {{ isFeedbackShared(training.id) ? 'Feedback Shared' : 'Share Feedback' }}
                                             </button>
                                         </div>
                                     </div>

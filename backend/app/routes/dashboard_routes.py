@@ -20,11 +20,11 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import update
+from sqlalchemy import update, func
 from app.database import get_db_async
 # Ensure you import your AdditionalSkill model
-from app.models import User, ManagerEmployee, EmployeeCompetency, AdditionalSkill
-from app.auth_utils import get_current_active_user, get_current_active_manager
+from app.models import User, ManagerEmployee, EmployeeCompetency, AdditionalSkill, TrainingDetail, TrainingAssignment, TrainingRequest
+from app.auth_utils import get_current_active_user, get_current_active_manager, get_current_active_admin
 from pydantic import BaseModel
 
 # Create a single router for both endpoints with a common prefix
@@ -324,4 +324,85 @@ async def update_team_member_skill(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update skill: {str(e)}"
         )
+
+@router.get("/admin/dashboard")
+async def get_admin_dashboard_data(
+    current_user: dict = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db_async)
+):
+    """
+    Get admin dashboard data with metrics and overview.
+    """
+    admin_username = current_user.get("username")
+    
+    # Get admin name
+    admin_name_result = await db.execute(
+        select(ManagerEmployee.manager_name).where(ManagerEmployee.manager_empid == admin_username)
+    )
+    admin_name_row = admin_name_result.first()
+    admin_name = admin_name_row[0] if admin_name_row else admin_username
+    
+    if admin_name == admin_username:
+        emp_name_result = await db.execute(
+            select(ManagerEmployee.employee_name).where(ManagerEmployee.employee_empid == admin_username)
+        )
+        emp_name_row = emp_name_result.first()
+        admin_name = emp_name_row[0] if emp_name_row else admin_username
+    
+    # Calculate metrics
+    total_users = await db.execute(select(func.count(User.id)))
+    total_users_count = total_users.scalar() or 0
+    
+    total_trainings = await db.execute(select(func.count(TrainingDetail.id)))
+    total_trainings_count = total_trainings.scalar() or 0
+    
+    total_assignments = await db.execute(select(func.count(TrainingAssignment.id)))
+    total_assignments_count = total_assignments.scalar() or 0
+    
+    total_skills = await db.execute(select(func.count(EmployeeCompetency.id)))
+    total_skills_count = total_skills.scalar() or 0
+    
+    pending_requests = await db.execute(
+        select(func.count(TrainingRequest.id)).where(TrainingRequest.status == 'pending')
+    )
+    pending_requests_count = pending_requests.scalar() or 0
+    
+    managers_count = await db.execute(
+        select(func.count(func.distinct(ManagerEmployee.manager_empid)))
+    )
+    managers = managers_count.scalar() or 0
+    
+    employees_count = await db.execute(
+        select(func.count(func.distinct(ManagerEmployee.employee_empid)))
+    )
+    employees = employees_count.scalar() or 0
+    
+    trainers_result = await db.execute(
+        select(func.count(func.distinct(ManagerEmployee.manager_empid))).where(
+            ManagerEmployee.manager_is_trainer == True
+        )
+    )
+    trainers = trainers_result.scalar() or 0
+    
+    emp_trainers_result = await db.execute(
+        select(func.count(func.distinct(ManagerEmployee.employee_empid))).where(
+            ManagerEmployee.employee_is_trainer == True
+        )
+    )
+    trainers += emp_trainers_result.scalar() or 0
+    
+    return {
+        "admin_name": admin_name,
+        "admin_id": admin_username,
+        "metrics": {
+            "total_users": total_users_count,
+            "total_managers": managers,
+            "total_employees": employees,
+            "total_trainings": total_trainings_count,
+            "total_assignments": total_assignments_count,
+            "total_skills": total_skills_count,
+            "pending_requests": pending_requests_count,
+            "active_trainers": trainers
+        }
+    }
     

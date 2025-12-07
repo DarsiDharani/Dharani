@@ -192,3 +192,26 @@ async def get_current_active_manager(user_data: dict = Depends(get_current_user)
             detail="You do not have permission to access this resource"
         )
     return user_data
+
+async def get_current_active_admin(user_data: dict = Depends(get_current_user)):
+    """
+    Get current active admin user with role verification.
+    
+    Verifies that the current user has admin role, raises 403 if not.
+    Use this dependency in routes that require admin privileges.
+    
+    Args:
+        user_data: User data from get_current_user dependency
+        
+    Returns:
+        dict: User data dictionary (only if role is 'admin')
+        
+    Raises:
+        HTTPException: 403 if user is not an admin
+    """
+    if user_data["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required. You do not have permission to access this resource."
+        )
+    return user_data

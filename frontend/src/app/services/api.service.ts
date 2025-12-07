@@ -181,6 +181,10 @@ export class ApiService {
     return this.getUrl(`/training-files/questions/${trainingId}`);
   }
 
+  questionFileExistsUrl(trainingId: number): string {
+    return this.getUrl(`/training-files/questions/${trainingId}/exists`);
+  }
+
   get uploadSolutionFileUrl(): string {
     return this.getUrl('/training-files/solutions/upload');
   }
@@ -216,5 +220,58 @@ export class ApiService {
 
   get deleteAllNotificationsUrl(): string {
     return this.getUrl('/notifications/all');
+  }
+
+  // Admin endpoints
+  get adminDashboardUrl(): string {
+    return this.getUrl('/data/admin/dashboard');
+  }
+
+  get adminUsersUrl(): string {
+    return this.getUrl('/admin/users');
+  }
+
+  adminUserUrl(username: string): string {
+    return this.getUrl(`/admin/users/${username}`);
+  }
+
+  adminResetPasswordUrl(username: string): string {
+    return this.getUrl(`/admin/users/${username}/reset-password`);
+  }
+
+  get adminTrainingsUrl(): string {
+    return this.getUrl('/admin/trainings');
+  }
+
+  adminTrainingUrl(id: number): string {
+    return this.getUrl(`/admin/trainings/${id}`);
+  }
+
+  adminTrainingAssignUrl(id: number): string {
+    return this.getUrl(`/admin/trainings/${id}/assign`);
+  }
+
+  get adminSkillsCompetenciesUrl(): string {
+    return this.getUrl('/admin/skills/competencies');
+  }
+
+  adminSkillCompetencyUrl(id: number): string {
+    return this.getUrl(`/admin/skills/competencies/${id}`);
+  }
+
+  get adminSkillsGapAnalysisUrl(): string {
+    return this.getUrl('/admin/skills/gap-analysis');
+  }
+
+  get adminAnalyticsOverviewUrl(): string {
+    return this.getUrl('/admin/analytics/overview');
+  }
+
+  get uploadExcelUrl(): string {
+    return this.getUrl('/upload-and-refresh');
+  }
+
+  get uploadCsvUrl(): string {
+    return this.getUrl('/upload-manager-employee-csv');
   }
 }

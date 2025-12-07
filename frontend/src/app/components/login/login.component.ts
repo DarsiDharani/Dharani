@@ -4,9 +4,9 @@
  * Purpose: Handles user authentication and login functionality
  * Features:
  * - Form-based login with username and password
- * - Validates username as numeric employee ID
+ * - Validates username as alphanumeric (supports employee IDs and admin usernames)
  * - Displays success/error popups for user feedback
- * - Redirects to appropriate dashboard based on user role (manager/employee)
+ * - Redirects to appropriate dashboard based on user role (admin/manager/employee)
  * 
  * @author Orbit Skill Development Team
  * @date 2025
@@ -71,7 +71,7 @@ export class LoginComponent implements OnInit {
    */
   ngOnInit(): void {
     this.loginForm = this.fb.group({
-      username: ['', [Validators.required, Validators.pattern('^[0-9]+$')]],
+      username: ['', [Validators.required, Validators.pattern('^[A-Za-z0-9]+$')]], // Allow alphanumeric for admin usernames like INT00137
       password: ['', [Validators.required]],
     });
   }
@@ -120,7 +120,9 @@ export class LoginComponent implements OnInit {
           this.showSuccessPopup('Login Successful!', 'Redirecting to your dashboard...');
           
           setTimeout(() => {
-            if (response.role === 'manager') {
+            if (response.role === 'admin') {
+              this.router.navigate(['/admin-dashboard']);
+            } else if (response.role === 'manager') {
               this.router.navigate(['/manager-dashboard']);
             } else if (response.role === 'employee') {
               this.router.navigate(['/engineer-dashboard']);

@@ -37,13 +37,14 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # -------------------------------------------------------------
 
 import logging
-from fastapi import FastAPI, HTTPException, UploadFile, File, Request, status
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import traceback
 
-from app.routes import register, login, dashboard_routes, additional_skills, training_routes, assignment_routes, training_requests, shared_content_routes, training_files_routes, notifications
+from app.routes import register, login, dashboard_routes, additional_skills, training_routes, assignment_routes, training_requests, shared_content_routes, training_files_routes, notifications, admin_routes, admin_routes
+from app.auth_utils import get_current_active_admin
 from app.database import AsyncSessionLocal, create_db_and_tables
 from app.excel_loader import load_all_from_excel, load_manager_employee_from_csv
 
@@ -148,6 +149,7 @@ app.include_router(training_requests.router)
 app.include_router(shared_content_routes.router)
 app.include_router(training_files_routes.router)
 app.include_router(notifications.router)
+app.include_router(admin_routes.router)
 
 # <<< NEW: Root Endpoint for Welcome Message >>>
 @app.get("/", tags=["Default"])
@@ -162,7 +164,10 @@ async def read_root():
 
 # <<< PERMANENT SOLUTION: File Upload Endpoint >>>
 @app.post("/upload-and-refresh", status_code=200, tags=["Admin"])
-async def upload_and_refresh_data(file: UploadFile = File(...)):
+async def upload_and_refresh_data(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_active_admin)
+):
     """
     Admin endpoint: Upload Excel file and refresh database with training/competency data.
     
@@ -222,7 +227,10 @@ async def upload_and_refresh_data(file: UploadFile = File(...)):
 
 
 @app.post("/upload-manager-employee-csv", status_code=200, tags=["Admin"])
-async def upload_manager_employee_csv(file: UploadFile = File(...)):
+async def upload_manager_employee_csv(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_active_admin)
+):
     """
     Admin endpoint: Upload CSV file and load manager-employee relationships.
     

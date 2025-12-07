@@ -17,8 +17,8 @@ export interface UserProfile {
     employee_name: string | null;
     /** Name of the employee's manager */
     manager_name: string | null;
-    /** User role: manager or employee */
-    role: 'manager' | 'employee';
+    /** User role: admin, manager, or employee */
+    role: 'admin' | 'manager' | 'employee';
     /** Array of direct report employee IDs (for managers) */
     direct_reports: number[];
   }

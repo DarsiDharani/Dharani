@@ -583,6 +583,8 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
   ) {}
 
   ngOnInit(): void {
+    // Clear question file status map on init to ensure fresh state after logout/login
+    this.questionFilesUploaded.clear();
     this.loadPinnedItems();
     this.fetchDashboardData();
     this.fetchTrainingCatalog();
@@ -3004,6 +3006,21 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
         this.feedbackSharedBy.delete(trainingId);
       }
     });
+
+    // Check if question file exists (for trainers)
+    this.http.get(this.apiService.questionFileExistsUrl(trainingId), { headers }).subscribe({
+      next: (response: any) => {
+        if (response && response.exists) {
+          this.questionFilesUploaded.set(trainingId, true);
+        } else {
+          this.questionFilesUploaded.set(trainingId, false);
+        }
+      },
+      error: () => {
+        // If error (403/404), file doesn't exist or user doesn't have access
+        this.questionFilesUploaded.set(trainingId, false);
+      }
+    });
   }
 
   fetchTrainingCandidates(trainingId: number | null | undefined): void {
@@ -3593,8 +3610,10 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      this.toastService.error('Only PDF files are allowed');
+    const allowedExtensions = ['.pdf', '.doc', '.docx'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!allowedExtensions.includes(fileExtension)) {
+      this.toastService.error('Only PDF, DOC, and DOCX files are allowed');
       return;
     }
 
@@ -3612,13 +3631,13 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
 
     this.http.post(this.apiService.uploadQuestionFileUrl, formData, { headers }).subscribe({
       next: (response: any) => {
-        this.toastService.success('Question file uploaded successfully');
+        this.toastService.success('Document uploaded successfully');
         this.questionFilesUploaded.set(trainingId, true);
         event.target.value = ''; // Reset file input
       },
       error: (err) => {
-        console.error('Failed to upload question file:', err);
-        this.toastService.error(err.error?.detail || 'Failed to upload question file');
+        console.error('Failed to upload document:', err);
+        this.toastService.error(err.error?.detail || 'Failed to upload document');
       }
     });
   }
@@ -3678,17 +3697,35 @@ export class ManagerDashboardComponent implements OnInit, AfterViewInit {
     const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
     this.http.get(this.apiService.solutionFileUrl(trainingId, employeeId), { 
       headers, 
-      responseType: 'blob' 
+      responseType: 'blob',
+      observe: 'response'
     }).subscribe({
-      next: (blob: Blob) => {
+      next: (response) => {
+        // Extract filename from Content-Disposition header or use provided filename
+        let filename = fileName || `solution_${trainingId}_${employeeId}.pdf`;
+        const contentDisposition = response.headers.get('Content-Disposition');
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Get media type from response or default based on file extension
+        const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+        const blob = new Blob([response.body!], { type: contentType });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = fileName || `solution_${trainingId}_${employeeId}.pdf`;
+        link.download = filename;
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // Small delay before cleanup to ensure download starts
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
         this.toastService.success('Solution file downloaded successfully');
       },
       error: (err) => {

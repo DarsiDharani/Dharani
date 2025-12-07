@@ -48,6 +48,14 @@ export class NotificationService {
    */
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();
+    if (!token) {
+      console.warn('No authentication token available');
+      // Return headers without Authorization if token is missing
+      // The request will fail with 401, which will be handled by error handlers
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
+    }
     return new HttpHeaders({
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -60,6 +68,11 @@ export class NotificationService {
    * @param limit - Maximum number of notifications to fetch
    */
   getNotifications(unreadOnly: boolean = false, limit: number = 50): Observable<Notification[]> {
+    // Don't make request if user is not logged in
+    if (!this.authService.isLoggedIn()) {
+      return of([]);
+    }
+
     const params: any = { limit };
     if (unreadOnly) {
       params.unread_only = true;
@@ -86,7 +99,14 @@ export class NotificationService {
       }),
       catchError(error => {
         console.error('Error fetching notifications:', error);
-        // Return empty array but don't clear existing notifications on error
+        // If 401 Unauthorized, user needs to log in again
+        if (error.status === 401) {
+          // Stop polling and clear state
+          this.stopPolling();
+          this.notificationsSubject.next([]);
+          this.unreadCountSubject.next(0);
+        }
+        // Return empty array but don't clear existing notifications on other errors
         // This prevents flickering when there's a temporary network issue
         return of(this.notificationsSubject.value);
       })
@@ -97,6 +117,11 @@ export class NotificationService {
    * Get unread notification count
    */
   getUnreadCount(): Observable<number> {
+    // Don't make request if user is not logged in
+    if (!this.authService.isLoggedIn()) {
+      return of(0);
+    }
+
     return this.http.get<UnreadCountResponse>(
       this.apiService.unreadCountUrl,
       { headers: this.getHeaders() }
@@ -107,6 +132,10 @@ export class NotificationService {
       }),
       catchError(error => {
         console.error('Error fetching unread count:', error);
+        // If 401 Unauthorized, user needs to log in again
+        if (error.status === 401) {
+          this.unreadCountSubject.next(0);
+        }
         return of(0);
       })
     );

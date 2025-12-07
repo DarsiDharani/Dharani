@@ -32,6 +32,7 @@ import { RegisterComponent } from './components/register/register.component';
 import { AboutComponent } from './components/about/about.component';
 import { EngineerDashboardComponent } from './dashboards/engineer-dashboard/engineer-dashboard.component';
 import { ManagerDashboardComponent } from './dashboards/manager-dashboard/manager-dashboard.component';
+import { AdminDashboardComponent } from './dashboards/admin-dashboard/admin-dashboard.component';
 import { SkillFilterPipe } from './pipes/skill-filter.pipe';
 import { ToastComponent } from './components/toast/toast.component';
 import { NotificationsComponent } from './components/notifications/notifications.component';
@@ -46,6 +47,7 @@ import { NotificationsComponent } from './components/notifications/notifications
     AboutComponent,
     EngineerDashboardComponent,
     ManagerDashboardComponent,
+    AdminDashboardComponent,
     SkillFilterPipe,
     ToastComponent,
     NotificationsComponent,

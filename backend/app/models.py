@@ -277,9 +277,28 @@ class Notification(Base):
     is_read = Column(Boolean, default=False, nullable=False, index=True)
     related_id = Column(Integer, nullable=True)  # ID of related entity (training_id, request_id, etc.)
     related_type = Column(String, nullable=True)  # Type of related entity (training, request, assignment, etc.)
-    action_url = Column(String, nullable=True)  # URL to navigate to when clicked
+    action_url = Column(String, nullable=True)  # URL to navigate to when notification is clicked
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     read_at = Column(DateTime, nullable=True)
     # Relationships
     user = relationship("User", foreign_keys=[user_empid])
+
+class Admin(Base):
+    """
+    Admin model - Stores admin user information.
+    Only users in this table have admin privileges.
+    
+    Attributes:
+        id: Primary key
+        username: Foreign key to users.username (unique)
+        created_at: When admin access was granted
+        created_by: Who granted admin access (optional, for audit trail)
+    """
+    __tablename__ = 'admins'
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, ForeignKey('users.username'), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, nullable=True)  # Optional: track who made them admin
+    # Relationships
+    user = relationship("User")
 

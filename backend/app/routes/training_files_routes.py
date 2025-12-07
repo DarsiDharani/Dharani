@@ -23,7 +23,7 @@ import os
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from pydantic import BaseModel
@@ -64,6 +64,19 @@ class SolutionFileResponse(BaseModel):
         from_attributes = True
 
 # --- Helper Functions ---
+
+def get_media_type_from_filename(filename: str) -> str:
+    """Determine the correct media type based on file extension."""
+    filename_lower = filename.lower()
+    if filename_lower.endswith('.pdf'):
+        return 'application/pdf'
+    elif filename_lower.endswith('.doc'):
+        return 'application/msword'
+    elif filename_lower.endswith('.docx'):
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    else:
+        # Default to binary/octet-stream for unknown types
+        return 'application/octet-stream'
 
 async def verify_trainer_for_training(training: models.TrainingDetail, trainer_username: str, db: AsyncSession):
     """Verify that the current user is the trainer for the given training."""
@@ -122,7 +135,7 @@ async def upload_question_file(
     current_user: dict = Depends(get_current_active_user)
 ):
     """
-    Allows a trainer to upload a question PDF file for a training they have scheduled.
+    Allows a trainer to upload a question document file (PDF, DOC, DOCX) for a training they have scheduled.
     """
     trainer_username = current_user.get("username")
     if not trainer_username:
@@ -131,11 +144,13 @@ async def upload_question_file(
             detail="Could not validate credentials"
         )
 
-    # Verify file is PDF
-    if not file.filename.lower().endswith('.pdf'):
+    # Verify file is a supported document format
+    allowed_extensions = ['.pdf', '.doc', '.docx']
+    file_extension = file.filename.lower()[file.filename.rfind('.'):] if '.' in file.filename.lower() else ''
+    if file_extension not in allowed_extensions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are allowed"
+            detail="Only PDF, DOC, and DOCX files are allowed"
         )
 
     # Verify the training exists
@@ -269,11 +284,71 @@ async def download_question_file(
             detail="File not found on server"
         )
 
-    return FileResponse(
-        path=str(file_path),
-        filename=question_file.file_name,
-        media_type='application/pdf'
+    # Read the file content
+    with open(file_path, 'rb') as f:
+        file_content = f.read()
+    
+    # Determine correct media type based on file extension
+    media_type = get_media_type_from_filename(question_file.file_name)
+    
+    # Return response with Content-Disposition header to force download
+    return Response(
+        content=file_content,
+        media_type=media_type,
+        headers={
+            'Content-Disposition': f'attachment; filename="{question_file.file_name}"'
+        }
     )
+
+@router.get("/questions/{training_id}/exists")
+async def check_question_file_exists(
+    training_id: int,
+    db: AsyncSession = Depends(get_db_async),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Allows trainers to check if a question file exists for a training they scheduled.
+    Returns a simple boolean response.
+    """
+    trainer_username = current_user.get("username")
+    if not trainer_username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+
+    # Verify the training exists
+    training_stmt = select(models.TrainingDetail).where(
+        models.TrainingDetail.id == training_id
+    )
+    training_result = await db.execute(training_stmt)
+    training = training_result.scalar_one_or_none()
+    
+    if not training:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Training not found"
+        )
+
+    # Verify the current user is the trainer for this training
+    is_trainer = await verify_trainer_for_training(training, trainer_username, db)
+    if not is_trainer:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only check question files for trainings you have scheduled"
+        )
+
+    # Check if question file exists
+    file_stmt = select(models.TrainingQuestionFile).where(
+        models.TrainingQuestionFile.training_id == training_id
+    )
+    file_result = await db.execute(file_stmt)
+    question_file = file_result.scalar_one_or_none()
+
+    return {
+        "exists": question_file is not None,
+        "file_name": question_file.file_name if question_file else None
+    }
 
 @router.post("/solutions/upload", status_code=status.HTTP_201_CREATED)
 async def upload_solution_file(
@@ -433,10 +508,20 @@ async def download_solution_file(
             detail="File not found on server"
         )
 
-    return FileResponse(
-        path=str(file_path),
-        filename=solution_file.file_name,
-        media_type='application/pdf'
+    # Read the file content
+    with open(file_path, 'rb') as f:
+        file_content = f.read()
+    
+    # Determine correct media type based on file extension (solutions are PDF only, but keeping flexible)
+    media_type = get_media_type_from_filename(solution_file.file_name)
+    
+    # Return response with Content-Disposition header to force download
+    return Response(
+        content=file_content,
+        media_type=media_type,
+        headers={
+            'Content-Disposition': f'attachment; filename="{solution_file.file_name}"'
+        }
     )
 
 @router.get("/trainer/solutions/{training_id}", response_model=List[SolutionFileResponse])
