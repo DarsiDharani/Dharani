@@ -134,7 +134,27 @@ export class LoginComponent implements OnInit {
           this.isLoading = false;
         },
         error: (err) => {
-          this.showErrorPopup('Login Failed', err.error?.detail || 'Login failed. Please try again.');
+          let errorMessage = 'Login failed. Please try again.';
+          
+          // Check for different types of errors
+          if (err.status === 0 || err.status === undefined) {
+            // Network error - backend not reachable
+            errorMessage = 'Cannot connect to server. Please check:\n' +
+              '1. Backend server is running\n' +
+              '2. API URL is correct in environment.ts\n' +
+              '3. Both machines are on the same network';
+          } else if (err.status === 401) {
+            // Unauthorized - invalid credentials
+            errorMessage = err.error?.detail || 'Invalid username or password. Please try again.';
+          } else if (err.status === 500) {
+            // Server error
+            errorMessage = 'Server error. Please contact administrator.';
+          } else if (err.error?.detail) {
+            // Other API errors with detail message
+            errorMessage = err.error.detail;
+          }
+          
+          this.showErrorPopup('Login Failed', errorMessage);
           this.isLoading = false;
         },
       });

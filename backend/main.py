@@ -52,6 +52,41 @@ from app.excel_loader import load_all_from_excel, load_manager_employee_from_csv
 # Set up logging with timestamp and level information
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def get_cors_headers(request: Request = None) -> dict:
+    """
+    Get CORS headers dynamically based on environment configuration.
+    In development, allows all origins. In production, uses CORS_ORIGINS env var.
+    """
+    origin = "*"
+    if request:
+        origin = request.headers.get("origin", "*")
+    
+    cors_origins_env = os.getenv("CORS_ORIGINS", "")
+    use_wildcard = not cors_origins_env
+    
+    if cors_origins_env:
+        # In production, validate origin against allowed list
+        allowed_origins = [o.strip() for o in cors_origins_env.split(",")]
+        if origin not in allowed_origins and origin != "*":
+            origin = allowed_origins[0] if allowed_origins else "*"
+        use_wildcard = False
+    
+    headers = {
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": "*",
+    }
+    
+    # Only set credentials header if not using wildcard (browsers reject wildcard + credentials)
+    if not use_wildcard:
+        headers["Access-Control-Allow-Credentials"] = "true"
+    
+    if origin != "*" and not use_wildcard:
+        headers["Access-Control-Allow-Origin"] = origin
+    else:
+        headers["Access-Control-Allow-Origin"] = "*"
+    
+    return headers
+
 # --- FastAPI App Initialization ---
 # Create FastAPI application instance with metadata
 app = FastAPI(
@@ -62,15 +97,23 @@ app = FastAPI(
 
 # --- CORS Middleware ---
 # Configure CORS to allow requests from Angular frontend
-# Update origins list for production deployment
-origins = [
-    "http://localhost:4200",  # Angular development server
-    "http://127.0.0.1:4200",  # Alternative localhost
-]
+# In development, allow all origins for cross-machine access
+# In production, set CORS_ORIGINS environment variable with comma-separated origins
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+if cors_origins_env:
+    # Use environment variable if set (for production)
+    origins = [origin.strip() for origin in cors_origins_env.split(",")]
+    allow_credentials = True
+else:
+    # Development: Allow all origins for cross-machine access
+    # Note: When using ["*"], allow_credentials must be False
+    origins = ["*"]
+    allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -88,12 +131,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
-        headers={
-            "Access-Control-Allow-Origin": "http://localhost:4200",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers=get_cors_headers(request)
     )
 
 @app.exception_handler(RequestValidationError)
@@ -106,12 +144,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": exc.errors(), "body": exc.body},
-        headers={
-            "Access-Control-Allow-Origin": "http://localhost:4200",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers=get_cors_headers(request)
     )
 
 @app.exception_handler(Exception)
@@ -130,12 +163,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "detail": f"Internal server error: {str(exc)}",
             "type": type(exc).__name__
         },
-        headers={
-            "Access-Control-Allow-Origin": "http://localhost:4200",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers=get_cors_headers(request)
     )
 
 # --- API Routers ---
